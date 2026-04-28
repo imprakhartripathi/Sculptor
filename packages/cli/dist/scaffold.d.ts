@@ -15,6 +15,7 @@ export interface ScaffoldProjectMetadata {
     devServer: DevServer;
     testing: TestingMetadata;
 }
+export declare const syncTestHarness: (targetDir: string) => void;
 export declare const scaffoldProject: (metadata: ScaffoldProjectMetadata, targetDir: string) => void;
 export declare const generateResourceFiles: (kind: GenerateKind, name: string, mode: ScaffoldMode, devServer?: DevServer, outputDir?: string, typeVariant?: TypeVariant, testingGenerate?: boolean) => Record<string, string>;
 export declare const writeGeneratedFiles: (targetDir: string, files: Record<string, string>) => void;

@@ -95,10 +95,15 @@ describe("scaffolded app", () => {
     ) as { name: string; version: string; scripts: Record<string, string>; dependencies: Record<string, string>; devDependencies: Record<string, string> };
     const sculptor = JSON.parse(
       fs.readFileSync(path.join(projectRoot, "sculptor.json"), "utf8")
-    ) as { routing: { style: string }; project: { srcRoot: string; entryFile: string; devServer: string } };
+    ) as {
+      routing: { style: string };
+      project: { srcRoot: string; entryFile: string; devServer: string };
+      testing: { generate: boolean; framework: string };
+    };
 
     expect(rootPackage.name).toBe("fixture-app");
     expect(rootPackage.scripts.dev).toBe("tsx src/main.ts");
+    expect(rootPackage.scripts.test).toBe("sc test");
     expect(rootPackage.dependencies).toEqual({
       express: "^4.21.2",
       "reflect-metadata": "^0.2.2"
@@ -107,10 +112,21 @@ describe("scaffolded app", () => {
     expect(fs.existsSync(path.join(projectRoot, "src/main.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/app/controllers/health.controller.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.controller.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
+    expect(fs.readFileSync(path.join(projectRoot, "src/tests/registry.ts"), "utf8")).toContain(
+      "./main.spec.js"
+    );
+    expect(fs.readFileSync(path.join(projectRoot, "src/tests/runner.ts"), "utf8")).toContain(
+      'await import(spec);'
+    );
     expect(fs.existsSync(path.join(projectRoot, "sculptor.json"))).toBe(true);
     expect(sculptor.routing.style).toBe("decorator");
     expect(sculptor.project.srcRoot).toBe("src");
     expect(sculptor.project.entryFile).toBe("main.ts");
     expect(sculptor.project.devServer).toBe("tsx");
+    expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
   });
 });

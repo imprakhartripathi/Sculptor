@@ -17,6 +17,7 @@ import {
   readModeFromFlags,
   routeHelp,
   scaffoldProject,
+  syncTestHarness,
   type GenerateKind,
   type ScaffoldMode,
   type ScaffoldProjectMetadata,
@@ -58,7 +59,7 @@ const sculptorCliBanner = String.raw`+------------------------------------------
 |   ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═╝   |
 |                                                                         |
 |                             SculptorTS CLI                              |
-|                                 v0.1.9                                  |
+|                                 v${versionLabel}                                  |
 |                                                                         |
 +-------------------------------------------------------------------------+`;
 
@@ -186,7 +187,7 @@ const resolveDefaultDevServer = (cwd: string): "tsx" | "nodemon" => {
 };
 
 const resolveTestingGenerate = (cwd: string): boolean =>
-  loadConfig(cwd).framework.testing?.generate === true;
+  loadConfig(cwd).framework.testing?.generate !== false;
 
 const resolveFrameworkLock = (
   mode: ScaffoldMode,
@@ -396,7 +397,7 @@ const resolveProjectMetadata = async (
     frameworkLock,
     devServer,
     testing: {
-      generate: false,
+      generate: true,
       framework: "vitest"
     }
   };
@@ -538,6 +539,12 @@ const handleLint = (cwd: string, spawn: typeof spawnSync, log: (...args: unknown
 
 const handleTest = (cwd: string, spawn: typeof spawnSync, log: (...args: unknown[]) => void): void => {
   const appRoot = requireAppRoot(cwd, "sc test");
+  const runner = path.join(appRoot, "src", "tests", "runner.ts");
+  if (fs.existsSync(runner)) {
+    runSpawn("npx", ["vitest", "run", runner], appRoot, spawn, log);
+    return;
+  }
+
   runSpawn("npx", ["vitest", "run"], appRoot, spawn, log);
 };
 
@@ -635,6 +642,9 @@ const handleGenerate = (
   const targetDir = appRoot;
 
   writeGeneratedFiles(targetDir, files);
+  if (resolveTestingGenerate(appRoot)) {
+    syncTestHarness(targetDir);
+  }
   log(`Generated ${kind} "${resolvedName}" using ${mode} mode.`);
   return Promise.resolve();
 };

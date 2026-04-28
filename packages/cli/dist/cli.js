@@ -6,7 +6,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "@sculptor/config";
-import { controllerHelp, generateHelp, generateResourceFiles, middlewareHelp, moduleHelp, parseGenerateMode, readModeFromFlags, routeHelp, scaffoldProject, typeHelp, writeGeneratedFiles } from "./scaffold.js";
+import { controllerHelp, generateHelp, generateResourceFiles, middlewareHelp, moduleHelp, parseGenerateMode, readModeFromFlags, routeHelp, scaffoldProject, syncTestHarness, typeHelp, writeGeneratedFiles } from "./scaffold.js";
 const cliPackageVersion = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const versionLabel = cliPackageVersion.version ?? "0.0.0";
 const isCommand = (value) => ["new", "start", "dev", "build", "lint", "test", "generate", "g", "help"].includes(value);
@@ -22,7 +22,7 @@ const sculptorCliBanner = String.raw `+-----------------------------------------
 |   ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═╝   |
 |                                                                         |
 |                             SculptorTS CLI                              |
-|                                 v0.1.9                                  |
+|                                 v${versionLabel}                                  |
 |                                                                         |
 +-------------------------------------------------------------------------+`;
 const sculptorDevBanner = (version) => String.raw `
@@ -125,7 +125,7 @@ const resolveDefaultDevServer = (cwd) => {
     const devServer = config.framework.project?.devServer;
     return devServer === "nodemon" ? "nodemon" : "tsx";
 };
-const resolveTestingGenerate = (cwd) => loadConfig(cwd).framework.testing?.generate === true;
+const resolveTestingGenerate = (cwd) => loadConfig(cwd).framework.testing?.generate !== false;
 const resolveFrameworkLock = (mode, provided) => {
     if (provided !== undefined) {
         return provided;
@@ -276,7 +276,7 @@ const resolveProjectMetadata = async (args, cwd, prompt) => {
         frameworkLock,
         devServer,
         testing: {
-            generate: false,
+            generate: true,
             framework: "vitest"
         }
     };
@@ -358,6 +358,11 @@ const handleLint = (cwd, spawn, log) => {
 };
 const handleTest = (cwd, spawn, log) => {
     const appRoot = requireAppRoot(cwd, "sc test");
+    const runner = path.join(appRoot, "src", "tests", "runner.ts");
+    if (fs.existsSync(runner)) {
+        runSpawn("npx", ["vitest", "run", runner], appRoot, spawn, log);
+        return;
+    }
     runSpawn("npx", ["vitest", "run"], appRoot, spawn, log);
 };
 const handleGenerate = (args, cwd, prompt, log, error) => {
@@ -422,6 +427,9 @@ const handleGenerate = (args, cwd, prompt, log, error) => {
     const files = generateResourceFiles(kind, resolvedName, mode, devServer, outputDir, typeVariant, resolveTestingGenerate(appRoot));
     const targetDir = appRoot;
     writeGeneratedFiles(targetDir, files);
+    if (resolveTestingGenerate(appRoot)) {
+        syncTestHarness(targetDir);
+    }
     log(`Generated ${kind} "${resolvedName}" using ${mode} mode.`);
     return Promise.resolve();
 };

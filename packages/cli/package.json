@@ -1,6 +1,6 @@
 {
   "name": "@sculptor/cli",
-  "version": "0.1.9",
+  "version": "0.1.11",
   "type": "module",
   "bin": {
     "sc": "./bin/sc.js"

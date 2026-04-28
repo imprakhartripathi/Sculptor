@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { ensureDir, writeTextFile } from "./fs.js";
@@ -118,7 +119,7 @@ const rootPackageJsonTemplate = (
     "dev": "${devScriptFor(devServer)}",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts",
-    "test": "vitest run"
+    "test": "sc test"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -136,40 +137,6 @@ ${devDependenciesFor(devServer)}
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^2.1.8"
-  }
-}`;
-
-const appPackageJsonTemplate = (
-  appName: string,
-  version: string,
-  devServer: DevServer
-): string => `{
-  "name": "${toKebabCase(appName)}",
-  "version": "${version}",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "tsx src/main.ts",
-    "dev": "${devScriptFor(devServer)}",
-    "build": "tsc -p tsconfig.json",
-    "lint": "eslint . --ext .ts",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "express": "^4.21.2",
-    "reflect-metadata": "^0.2.2"
-  },
-  "devDependencies": {
-    "@types/express": "^4.17.23",
-    "@types/node": "^22.15.3",
-    "@types/supertest": "^6.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.30.1",
-    "@typescript-eslint/parser": "^8.30.1",
-    "eslint": "^9.20.0",
-${devDependenciesFor(devServer)}
-    "typescript": "^5.8.3",
-    "vitest": "^2.1.8",
-    "supertest": "^7.1.0"
   }
 }`;
 
@@ -254,6 +221,47 @@ export default defineConfig({
     environment: "node",
     globals: true
   }
+});
+`;
+
+const mainSpecTemplate = `import type { Server } from "node:http";
+import { fileURLToPath } from "node:url";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { startApp } from "@sculptor/core";
+import { registry } from "../registry.js";
+
+describe("app bootstrap", () => {
+  let server: Server | undefined;
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+
+    if (!server) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      server?.close(() => resolve());
+    });
+    server = undefined;
+  });
+
+  it("starts the application", async () => {
+    const logs: string[] = [];
+    vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(" "));
+    });
+
+    server = await startApp({
+      registry,
+      rootDir: fileURLToPath(new URL("../..", import.meta.url)),
+      port: 0
+    });
+
+    expect(logs.join("\\n")).toContain("Local: http://localhost:");
+  });
 });
 `;
 
@@ -369,11 +377,6 @@ const healthServiceTemplate = `export class HealthService {
 const healthModuleTemplate = `export class HealthModule {}
 `;
 
-const healthHandlerTemplate = `export const healthHandler = (_req: unknown, res: { json: (value: unknown) => void }) => {
-  res.json({ status: "ok" });
-};
-`;
-
 const healthControllerSpecTemplate = `import { describe, expect, it } from "vitest";
 
 import { HealthController } from "../app/controllers/health.controller.js";
@@ -384,17 +387,6 @@ describe("HealthController", () => {
 
     expect(controller.health()).toEqual({ status: "ok" });
     expect(controller.ping()).toEqual({ message: "pong" });
-  });
-});
-`;
-
-const healthServiceSpecTemplate = `import { describe, expect, it } from "vitest";
-
-import { HealthService } from "../app/services/health.service.js";
-
-describe("HealthService", () => {
-  it("can be instantiated", () => {
-    expect(new HealthService()).toBeInstanceOf(HealthService);
   });
 });
 `;
@@ -416,20 +408,61 @@ describe("healthRoutes", () => {
 });
 `;
 
-const healthMiddlewareSpecTemplate = `import { describe, expect, it, vi } from "vitest";
-
-import { healthMiddleware } from "../app/middlewares/health.middleware.js";
-
-describe("healthMiddleware", () => {
-  it("calls next", () => {
-    const next = vi.fn();
-
-    healthMiddleware({} as never, {} as never, next);
-
-    expect(next).toHaveBeenCalledTimes(1);
-  });
-});
+const testRegistryTemplate = (specs: string[]): string => `export const testRegistry = [
+${specs.map((spec) => `  "${spec}"`).join(",\n")}
+] as const;
 `;
+
+const testRunnerTemplate = (): string => `import { testRegistry } from "./registry.js";
+
+for (const spec of testRegistry) {
+  await import(spec);
+}
+`;
+
+const collectSpecPaths = (dir: string, rootDir: string = dir): string[] => {
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const specs: string[] = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      specs.push(...collectSpecPaths(fullPath, rootDir));
+      continue;
+    }
+
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    if (!entry.name.endsWith(".spec.ts")) {
+      continue;
+    }
+
+    const relativePath = normalizeRelativePath(path.relative(rootDir, fullPath));
+    if (relativePath === "registry.ts" || relativePath === "runner.ts") {
+      continue;
+    }
+
+    specs.push(`./${relativePath.replace(/\.ts$/, ".js")}`);
+  }
+
+  return specs.sort();
+};
+
+export const syncTestHarness = (targetDir: string): void => {
+  const testsDir = path.join(targetDir, "src", "tests");
+  ensureDir(testsDir);
+  const specs = collectSpecPaths(testsDir);
+
+  writeTextFile(path.join(testsDir, "registry.ts"), testRegistryTemplate(specs));
+  writeTextFile(path.join(testsDir, "runner.ts"), testRunnerTemplate());
+};
 
 const controllerSpecTemplate = (name: string, sourcePath: string): string => {
   const importPath = specImportPath(sourcePath);
@@ -496,73 +529,6 @@ describe("${toCamelCase(name)}Middleware", () => {
   });
 });
 `;
-};
-
-const buildCompanionTests = (
-  generatedFiles: Record<string, string>,
-  testing: TestingMetadata
-): Record<string, string> => {
-  if (!testing.generate) {
-    return {};
-  }
-
-  const tests: Record<string, string> = {};
-
-  for (const [filePath] of Object.entries(generatedFiles)) {
-    const normalizedPath = normalizeRelativePath(filePath);
-    const baseName = path.posix.basename(normalizedPath, ".ts");
-
-    if (normalizedPath.endsWith(".controller.ts")) {
-      const resourceName = baseName.replace(/\.controller$/, "");
-      if (normalizedPath.startsWith("src/app/controllers/")) {
-        tests[`src/tests/${specFileName(resourceName, "controller")}`] =
-          controllerSpecTemplate(resourceName, normalizedPath);
-        continue;
-      }
-
-      tests[`src/tests/${specFileName(resourceName, "routes")}`] = routeSpecTemplate(
-        resourceName,
-        normalizedPath.replace(/\.handler\.ts$/, ".routes.ts")
-      );
-      tests[`src/tests/${specFileName(resourceName, "handler")}`] = `import { describe, expect, it, vi } from "vitest";
-
-import { ${toPascalCase(resourceName)}Handler } from "../app/handlers/${resourceName}.js";
-
-describe("${toPascalCase(resourceName)}Handler", () => {
-  it("writes the resource payload", () => {
-    const res = { json: vi.fn() };
-
-    ${toPascalCase(resourceName)}Handler({} as never, res);
-
-    expect(res.json).toHaveBeenCalledWith({ resource: "${resourceName}" });
-  });
-});
-`;
-      continue;
-    }
-
-    if (normalizedPath.endsWith(".service.ts")) {
-      const resourceName = baseName.replace(/\.service$/, "");
-      tests[`src/tests/${specFileName(resourceName, "service")}`] =
-        serviceSpecTemplate(resourceName, normalizedPath);
-      continue;
-    }
-
-    if (normalizedPath.endsWith(".routes.ts")) {
-      const resourceName = baseName.replace(/\.routes$/, "");
-      tests[`src/tests/${specFileName(resourceName, "routes")}`] =
-        routeSpecTemplate(resourceName, normalizedPath);
-      continue;
-    }
-
-    if (normalizedPath.endsWith(".middleware.ts")) {
-      const resourceName = baseName.replace(/\.middleware$/, "");
-      tests[`src/tests/${specFileName(resourceName, "middleware")}`] =
-        middlewareSpecTemplate(resourceName, normalizedPath);
-    }
-  }
-
-  return tests;
 };
 
 const createDecoratorController = (
@@ -680,26 +646,6 @@ const appShellFiles = (
   "src/registry.ts": registryTemplate(metadata.mode)
 });
 
-const resourceShellFiles = (
-  name: string,
-  mode: ScaffoldMode,
-  devServer: DevServer
-): Record<string, string> => ({
-  "package.json": rootPackageJsonTemplate(name, "0.1.0", devServer),
-  "tsconfig.json": rootTsconfigTemplate,
-  "sculptor.json": sculptorTemplate(
-    mode,
-    devServer,
-    mode !== "hybrid",
-    { generate: false, framework: "vitest" }
-  ),
-  "props.json": propsTemplate,
-  "src/main.ts": mainTemplate,
-  "src/registry.ts": registryTemplate(mode),
-  "eslint.config.js": eslintConfigTemplate,
-  "vitest.config.ts": vitestConfigTemplate
-});
-
 export const scaffoldProject = (
   metadata: ScaffoldProjectMetadata,
   targetDir: string,
@@ -721,10 +667,19 @@ export const scaffoldProject = (
 
   if (metadata.mode === "functional" || metadata.mode === "hybrid") {
     rootFiles["src/app/routes/health.routes.ts"] = healthRoutesTemplate;
-    rootFiles["src/app/handlers/health.handler.ts"] = healthHandlerTemplate;
   }
 
-  Object.assign(rootFiles, buildCompanionTests(rootFiles, metadata.testing));
+  if (metadata.testing.generate) {
+    rootFiles["src/tests/main.spec.ts"] = mainSpecTemplate;
+
+    if (metadata.mode === "decorator" || metadata.mode === "hybrid") {
+      rootFiles["src/tests/health.controller.spec.ts"] = healthControllerSpecTemplate;
+    }
+
+    if (metadata.mode === "functional" || metadata.mode === "hybrid") {
+      rootFiles["src/tests/health.routes.spec.ts"] = healthRoutesSpecTemplate;
+    }
+  }
 
   for (const [relativePath, content] of Object.entries(rootFiles)) {
     writeTextFile(path.join(targetDir, relativePath), content);
@@ -740,6 +695,10 @@ export const scaffoldProject = (
     "src/tests"
   ]) {
     ensureDir(path.join(targetDir, dir));
+  }
+
+  if (metadata.testing.generate) {
+    syncTestHarness(targetDir);
   }
 };
 

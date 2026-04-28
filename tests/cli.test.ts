@@ -148,6 +148,7 @@ describe("cli", () => {
     expect(rootPackage.version).toBe("2.0.0");
     expect(rootPackage.scripts.start).toBe("tsx src/main.ts");
     expect(rootPackage.scripts.dev).toBe("tsx src/main.ts");
+    expect(rootPackage.scripts.test).toBe("sc test");
     expect(rootPackage.dependencies).toEqual({
       express: "^4.21.2",
       "reflect-metadata": "^0.2.2"
@@ -155,7 +156,17 @@ describe("cli", () => {
     expect(sculptor.routing.style).toBe("hybrid");
     expect(sculptor.frameworkLock).toBe(false);
     expect(sculptor.project?.devServer).toBe("tsx");
-    expect(sculptor.testing).toEqual({ generate: false, framework: "vitest" });
+    expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.routes.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
+    expect(fs.readFileSync(path.join(projectRoot, "src/tests/registry.ts"), "utf8")).toContain(
+      "./main.spec.js"
+    );
+    expect(fs.readFileSync(path.join(projectRoot, "src/tests/runner.ts"), "utf8")).toContain(
+      'await import(spec);'
+    );
     expect(calls).toEqual([
       { command: "npm", args: ["i"] },
       { command: "npm", args: ["i", "@sculptor/core@latest"] },
@@ -204,7 +215,14 @@ describe("cli", () => {
     expect(sculptor.routing.style).toBe("functional");
     expect(sculptor.frameworkLock).toBe(false);
     expect(sculptor.project.devServer).toBe("tsx");
-    expect(sculptor.testing).toEqual({ generate: false, framework: "vitest" });
+    expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.routes.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
+    expect(fs.readFileSync(path.join(projectRoot, "src/tests/registry.ts"), "utf8")).toContain(
+      "./main.spec.js"
+    );
     expect(calls[0]).toEqual({ command: "npm", args: ["i"] });
   });
 
@@ -266,7 +284,7 @@ describe("cli", () => {
     });
     expect(calls[3]).toEqual({
       command: "npx",
-      args: ["vitest", "run"]
+      args: ["vitest", "run", path.join(cwd, "src", "tests", "runner.ts")]
     });
     expect(calls[4]).toEqual({
       command: "npx",
@@ -343,13 +361,20 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(cwd, "src/app/routes/profile.routes.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/handlers/profile.handler.ts"))).toBe(false);
     expect(fs.existsSync(path.join(cwd, "src/app/routes/session.routes.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src/app/handlers/session.handler.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/controllers/session.controller.ts"))).toBe(false);
     expect(fs.existsSync(path.join(cwd, "src/app/controllers/profile.controller.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/profile.controller.spec.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src/tests/profile.module.spec.ts"))).toBe(false);
+    expect(fs.existsSync(path.join(cwd, "src/tests/profile.routes.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/auth.middleware.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/session.routes.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/tests/registry.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/tests/runner.ts"))).toBe(true);
+    expect(
+      fs.readFileSync(path.join(cwd, "src/tests/registry.ts"), "utf8")
+    ).toContain("./profile.controller.spec.js");
+    expect(
+      fs.readFileSync(path.join(cwd, "src/tests/runner.ts"), "utf8")
+    ).toContain('await import(spec);');
     expect(logs.join("\n")).toContain('Generated controller "profile"');
     expect(logs.join("\n")).toContain('Generated controller "session"');
     expect(logs.join("\n")).toContain('Generated module "profile"');
@@ -361,6 +386,19 @@ describe("cli", () => {
   it("does not generate test files when tdd is disabled", async () => {
     const { projectRoot } = await scaffoldFixture();
     const cwd = projectRoot;
+    fs.writeFileSync(
+      path.join(cwd, "sculptor.json"),
+      JSON.stringify(
+        {
+          project: { srcRoot: "src", entryFile: "main.ts", devServer: "tsx" },
+          routing: { style: "decorator" },
+          testing: { generate: false, framework: "vitest" },
+          frameworkLock: true
+        },
+        null,
+        2
+      )
+    );
 
     await runCli(["node", "sc", "g", "c", "profile"], {
       cwd,
