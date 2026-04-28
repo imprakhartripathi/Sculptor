@@ -1,0 +1,11 @@
+{
+  "project": {
+    "srcRoot": "src",
+    "entryFile": "main.ts",
+    "devServer": "tsnode"
+  },
+  "routing": {
+    "style": "hybrid"
+  },
+  "frameworkLock": true
+}

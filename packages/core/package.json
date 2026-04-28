@@ -1,0 +1,33 @@
+{
+  "name": "@sculptor/core",
+  "version": "0.1.4",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@sculptor/config": "^0.1.0",
+    "@sculptor/router": "^0.1.0",
+    "express": "^4.21.2",
+    "reflect-metadata": "^0.2.2"
+  }
+}
