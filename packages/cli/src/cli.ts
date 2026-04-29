@@ -440,7 +440,13 @@ const handleNew = async (
 
   scaffoldProject(metadata, targetDir);
   runSpawn("npm", ["i"], targetDir, spawn, log);
-  runSpawn("npm", ["i", "@sculptor/core@latest"], targetDir, spawn, log);
+  runSpawn(
+    "npm",
+    ["i", "@sculptor/core@latest", "@sculptor/paws@latest"],
+    targetDir,
+    spawn,
+    log
+  );
   runSpawn(
     "npm",
     ["i", "-D", "@sculptor/cli@latest", "@sculptor/config@latest", "@sculptor/router@latest"],

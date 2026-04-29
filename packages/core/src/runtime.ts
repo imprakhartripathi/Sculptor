@@ -2,6 +2,7 @@ import express from "express";
 import type { Server } from "node:http";
 
 import { loadConfig } from "@sculptor/config";
+import { paws } from "@sculptor/paws";
 import { createRouter } from "@sculptor/router";
 import type { StartAppOptions } from "./types.js";
 import { logRegistryState } from "./warnings.js";
@@ -36,7 +37,19 @@ export const startApp = async ({
       const address = server.address();
       const actualPort =
         typeof address === "object" && address !== null ? address.port : resolvedPort;
-      console.log(`SculptorTS listening on port ${actualPort}\nLocal: http://localhost:${actualPort}`);
+      const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
+      process.env.SCULPTOR_ROOT_DIR = rootDir;
+
+      try {
+        paws.system(`SculptorTS listening on port ${actualPort}\nLocal: http://localhost:${actualPort}`);
+      } finally {
+        if (previousRootDir === undefined) {
+          delete process.env.SCULPTOR_ROOT_DIR;
+        } else {
+          process.env.SCULPTOR_ROOT_DIR = previousRootDir;
+        }
+      }
+
       resolve(server);
     });
   });

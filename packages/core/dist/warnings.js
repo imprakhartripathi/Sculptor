@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getConfig } from "@sculptor/config";
+import { paws } from "@sculptor/paws";
 const toControllerClassName = (fileName) => {
     const base = fileName.replace(/\.controller\.[^.]+$/, "").replace(/\.controller$/, "");
     return `${base
@@ -12,23 +13,35 @@ const toControllerClassName = (fileName) => {
 export const logRegistryState = (rootDir, registry) => {
     const controllerCount = registry.controllers.length;
     const routeCount = registry.routes.length;
-    console.log(`Registered Controllers: ${controllerCount}`);
-    console.log(`Registered Routes: ${routeCount}`);
-    const srcRoot = String(getConfig("project.srcRoot", rootDir) ?? "src");
-    const controllersDir = path.join(rootDir, srcRoot, "app", "controllers");
-    if (!fs.existsSync(controllersDir)) {
-        return;
+    const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
+    process.env.SCULPTOR_ROOT_DIR = rootDir;
+    try {
+        paws.log(`Registered Controllers: ${controllerCount}`);
+        paws.log(`Registered Routes: ${routeCount}`);
+        const srcRoot = String(getConfig("project.srcRoot", rootDir) ?? "src");
+        const controllersDir = path.join(rootDir, srcRoot, "app", "controllers");
+        if (!fs.existsSync(controllersDir)) {
+            return;
+        }
+        const registeredNames = new Set(registry.controllers.map((controller) => controller.name));
+        const missingControllers = fs
+            .readdirSync(controllersDir)
+            .filter((file) => /\.controller\.[cm]?[jt]sx?$/.test(file))
+            .map(toControllerClassName)
+            .filter((className) => !registeredNames.has(className));
+        if (missingControllers.length > 0) {
+            paws.warn("Unregistered Controllers Found:");
+            for (const controllerName of missingControllers) {
+                paws.warn(` - ${controllerName}`);
+            }
+        }
     }
-    const registeredNames = new Set(registry.controllers.map((controller) => controller.name));
-    const missingControllers = fs
-        .readdirSync(controllersDir)
-        .filter((file) => /\.controller\.[cm]?[jt]sx?$/.test(file))
-        .map(toControllerClassName)
-        .filter((className) => !registeredNames.has(className));
-    if (missingControllers.length > 0) {
-        console.warn("⚠ Unregistered Controllers Found:");
-        for (const controllerName of missingControllers) {
-            console.warn(` - ${controllerName}`);
+    finally {
+        if (previousRootDir === undefined) {
+            delete process.env.SCULPTOR_ROOT_DIR;
+        }
+        else {
+            process.env.SCULPTOR_ROOT_DIR = previousRootDir;
         }
     }
 };

@@ -1,5 +1,6 @@
 import express from "express";
 import { loadConfig } from "@sculptor/config";
+import { paws } from "@sculptor/paws";
 import { createRouter } from "@sculptor/router";
 import { logRegistryState } from "./warnings.js";
 export const startApp = async ({ registry: appRegistry, rootDir = process.cwd(), port }) => {
@@ -22,7 +23,19 @@ export const startApp = async ({ registry: appRegistry, rootDir = process.cwd(),
         server = app.listen(resolvedPort, () => {
             const address = server.address();
             const actualPort = typeof address === "object" && address !== null ? address.port : resolvedPort;
-            console.log(`SculptorTS listening on port ${actualPort}\nLocal: http://localhost:${actualPort}`);
+            const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
+            process.env.SCULPTOR_ROOT_DIR = rootDir;
+            try {
+                paws.system(`SculptorTS listening on port ${actualPort}\nLocal: http://localhost:${actualPort}`);
+            }
+            finally {
+                if (previousRootDir === undefined) {
+                    delete process.env.SCULPTOR_ROOT_DIR;
+                }
+                else {
+                    process.env.SCULPTOR_ROOT_DIR = previousRootDir;
+                }
+            }
             resolve(server);
         });
     });

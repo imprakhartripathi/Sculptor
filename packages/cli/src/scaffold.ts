@@ -150,6 +150,15 @@ const rootReadmeTemplate = (appName: string): string => `# ${appName}
 - \`npm run lint\` - lint the source
 - \`npm run test\` - run the test suite through \`sc test\`
 
+## Logging
+
+The scaffold includes \`@sculptor/paws\` and turns logging on by default.
+
+- \`logging.enabled\` controls whether anything prints
+- \`logging.dogMode\` toggles dog personalities vs standard labels
+
+The default scaffold boots in dog mode so the logger is visible immediately.
+
 ## Test Harness
 
 The scaffold generates a Vitest registry under \`src/tests\`:
@@ -194,6 +203,10 @@ const sculptorTemplate = (
     "srcRoot": "src",
     "entryFile": "main.ts",
     "devServer": "${devServer}"
+  },
+  "logging": {
+    "enabled": true,
+    "dogMode": true
   },
   "routing": {
     "style": "${mode}"
@@ -316,11 +329,15 @@ const propsTemplate = `{
   }
 }`;
 
-const mainTemplate = `import { startApp } from "@sculptor/core";
+const mainTemplate = `import { paws } from "@sculptor/paws";
+import { startApp } from "@sculptor/core";
 import { fileURLToPath } from "node:url";
 import { registry } from "./registry.js";
 
 const appRoot = fileURLToPath(new URL("..", import.meta.url));
+
+process.env.SCULPTOR_ROOT_DIR = appRoot;
+paws.boot();
 
 void startApp({ registry, rootDir: appRoot });
 `;

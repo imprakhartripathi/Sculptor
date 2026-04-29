@@ -1,6 +1,6 @@
 {
   "name": "@sculptor/cli",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "type": "module",
   "bin": {
     "sc": "./bin/sc.js"
@@ -35,8 +35,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@sculptor/config": "^0.1.0",
-    "@sculptor/core": "^0.1.0",
+    "@sculptor/config": "^0.1.3",
+    "@sculptor/core": "^0.1.6",
     "tsx": "^4.19.4"
   }
 }

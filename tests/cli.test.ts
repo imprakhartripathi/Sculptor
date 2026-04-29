@@ -138,6 +138,7 @@ describe("cli", () => {
     const sculptor = JSON.parse(
       fs.readFileSync(path.join(projectRoot, "sculptor.json"), "utf8")
     ) as {
+      logging: { enabled: boolean; dogMode: boolean };
       routing: { style: string };
       frameworkLock: boolean;
       project: { devServer: string };
@@ -153,6 +154,7 @@ describe("cli", () => {
       express: "^4.21.2",
       "reflect-metadata": "^0.2.2"
     });
+    expect(sculptor.logging).toEqual({ enabled: true, dogMode: true });
     expect(sculptor.routing.style).toBe("hybrid");
     expect(sculptor.frameworkLock).toBe(false);
     expect(sculptor.project?.devServer).toBe("tsx");
@@ -171,7 +173,7 @@ describe("cli", () => {
     );
     expect(calls).toEqual([
       { command: "npm", args: ["i"] },
-      { command: "npm", args: ["i", "@sculptor/core@latest"] },
+      { command: "npm", args: ["i", "@sculptor/core@latest", "@sculptor/paws@latest"] },
       {
         command: "npm",
         args: ["i", "-D", "@sculptor/cli@latest", "@sculptor/config@latest", "@sculptor/router@latest"]
@@ -207,6 +209,7 @@ describe("cli", () => {
     const sculptor = JSON.parse(
       fs.readFileSync(path.join(projectRoot, "sculptor.json"), "utf8")
     ) as {
+      logging: { enabled: boolean; dogMode: boolean };
       routing: { style: string };
       frameworkLock: boolean;
       project: { devServer: string };
@@ -214,6 +217,7 @@ describe("cli", () => {
     };
 
     expect(prompt).toHaveBeenCalledTimes(1);
+    expect(sculptor.logging).toEqual({ enabled: true, dogMode: true });
     expect(sculptor.routing.style).toBe("functional");
     expect(sculptor.frameworkLock).toBe(false);
     expect(sculptor.project.devServer).toBe("tsx");
@@ -224,6 +228,9 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "README.md"))).toBe(true);
+    expect(fs.readFileSync(path.join(projectRoot, "README.md"), "utf8")).toContain(
+      "@sculptor/paws"
+    );
     expect(fs.readFileSync(path.join(projectRoot, "src/tests/registry.ts"), "utf8")).toContain(
       "./main.spec.js"
     );
@@ -375,6 +382,9 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(cwd, "src/tests/runner.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/runner.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "README.md"))).toBe(true);
+    expect(fs.readFileSync(path.join(cwd, "README.md"), "utf8")).toContain(
+      "logging.enabled"
+    );
     expect(
       fs.readFileSync(path.join(cwd, "src/tests/registry.ts"), "utf8")
     ).toContain("./profile.controller.spec.js");

@@ -96,6 +96,7 @@ describe("scaffolded app", () => {
     const sculptor = JSON.parse(
       fs.readFileSync(path.join(projectRoot, "sculptor.json"), "utf8")
     ) as {
+      logging: { enabled: boolean; dogMode: boolean };
       routing: { style: string };
       project: { srcRoot: string; entryFile: string; devServer: string };
       testing: { generate: boolean; framework: string };
@@ -128,6 +129,7 @@ describe("scaffolded app", () => {
       "src/tests/runner.spec.ts"
     );
     expect(fs.existsSync(path.join(projectRoot, "sculptor.json"))).toBe(true);
+    expect(sculptor.logging).toEqual({ enabled: true, dogMode: true });
     expect(sculptor.routing.style).toBe("decorator");
     expect(sculptor.project.srcRoot).toBe("src");
     expect(sculptor.project.entryFile).toBe("main.ts");

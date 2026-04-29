@@ -9,10 +9,14 @@ export interface LoggingConfig {
 const asBoolean = (value: unknown, fallback: boolean): boolean =>
   typeof value === "boolean" ? value : fallback;
 
-export const resolveLoggingConfig = (rootDir = process.cwd()): LoggingConfig => ({
+export const resolveLoggingConfig = (
+  rootDir = process.env.SCULPTOR_ROOT_DIR ?? process.cwd()
+): LoggingConfig => ({
   enabled: asBoolean(getConfig("logging.enabled", rootDir), true),
   dogMode: asBoolean(getConfig("logging.dogMode", rootDir), false)
 });
 
-export const resolveLoggerMode = (rootDir = process.cwd()): LoggerMode =>
+export const resolveLoggerMode = (
+  rootDir = process.env.SCULPTOR_ROOT_DIR ?? process.cwd()
+): LoggerMode =>
   resolveLoggingConfig(rootDir).dogMode ? "dog" : "standard";

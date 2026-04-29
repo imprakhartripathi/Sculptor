@@ -302,7 +302,7 @@ const handleNew = async (args, cwd, prompt, spawn, log) => {
     const targetDir = path.join(cwd, metadata.appName);
     scaffoldProject(metadata, targetDir);
     runSpawn("npm", ["i"], targetDir, spawn, log);
-    runSpawn("npm", ["i", "@sculptor/core@latest"], targetDir, spawn, log);
+    runSpawn("npm", ["i", "@sculptor/core@latest", "@sculptor/paws@latest"], targetDir, spawn, log);
     runSpawn("npm", ["i", "-D", "@sculptor/cli@latest", "@sculptor/config@latest", "@sculptor/router@latest"], targetDir, spawn, log);
     log(`Created SculptorTS project at ${targetDir}`);
 };
