@@ -91,6 +91,26 @@ ${devDependenciesFor(devServer)}
     "vitest": "^2.1.8"
   }
 }`;
+const rootReadmeTemplate = (appName) => `# ${appName}
+
+## Scripts
+
+- \`npm run start\` - start the app
+- \`npm run dev\` - start the app in development mode
+- \`npm run build\` - compile the app
+- \`npm run lint\` - lint the source
+- \`npm run test\` - run the test suite through \`sc test\`
+
+## Test Harness
+
+The scaffold generates a Vitest registry under \`src/tests\`:
+
+- \`src/tests/registry.ts\` collects generated spec entrypoints
+- \`src/tests/runner.ts\` imports the registry entries
+- \`src/tests/runner.spec.ts\` is the Vitest entrypoint used by \`sc test\`
+
+When you add new specs under \`src/tests\`, rerun \`sc test\` and the harness will pick them up.
+`;
 const rootTsconfigTemplate = `{
   "compilerOptions": {
     "target": "ES2020",
@@ -348,6 +368,8 @@ for (const spec of testRegistry) {
   await import(spec);
 }
 `;
+const testHarnessSpecTemplate = () => `import "./runner.js";
+`;
 const collectSpecPaths = (dir, rootDir = dir) => {
     if (!fs.existsSync(dir)) {
         return [];
@@ -367,7 +389,9 @@ const collectSpecPaths = (dir, rootDir = dir) => {
             continue;
         }
         const relativePath = normalizeRelativePath(path.relative(rootDir, fullPath));
-        if (relativePath === "registry.ts" || relativePath === "runner.ts") {
+        if (relativePath === "registry.ts" ||
+            relativePath === "runner.ts" ||
+            relativePath === "runner.spec.ts") {
             continue;
         }
         specs.push(`./${relativePath.replace(/\.ts$/, ".js")}`);
@@ -380,6 +404,7 @@ export const syncTestHarness = (targetDir) => {
     const specs = collectSpecPaths(testsDir);
     writeTextFile(path.join(testsDir, "registry.ts"), testRegistryTemplate(specs));
     writeTextFile(path.join(testsDir, "runner.ts"), testRunnerTemplate());
+    writeTextFile(path.join(testsDir, "runner.spec.ts"), testHarnessSpecTemplate());
 };
 const controllerSpecTemplate = (name, sourcePath) => {
     const importPath = specImportPath(sourcePath);
@@ -527,6 +552,7 @@ const createTypeResource = (name, variant, outputDir) => {
 };
 const appShellFiles = (metadata) => ({
     "package.json": rootPackageJsonTemplate(metadata.appName, metadata.version, metadata.devServer),
+    "README.md": rootReadmeTemplate(metadata.appName),
     "tsconfig.json": rootTsconfigTemplate,
     "sculptor.json": sculptorTemplate(metadata.mode, metadata.devServer, metadata.frameworkLock, metadata.testing),
     "props.json": propsTemplate,

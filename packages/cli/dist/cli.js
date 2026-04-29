@@ -358,7 +358,7 @@ const handleLint = (cwd, spawn, log) => {
 };
 const handleTest = (cwd, spawn, log) => {
     const appRoot = requireAppRoot(cwd, "sc test");
-    const runner = path.join(appRoot, "src", "tests", "runner.ts");
+    const runner = path.join(appRoot, "src", "tests", "runner.spec.ts");
     if (fs.existsSync(runner)) {
         runSpawn("npx", ["vitest", "run", runner], appRoot, spawn, log);
         return;

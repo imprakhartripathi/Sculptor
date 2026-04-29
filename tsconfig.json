@@ -17,6 +17,7 @@
   "references": [
     { "path": "./app" },
     { "path": "./packages/config" },
+    { "path": "./packages/paws" },
     { "path": "./packages/core" },
     { "path": "./packages/router" },
     { "path": "./packages/cli" }

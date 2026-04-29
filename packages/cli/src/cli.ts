@@ -539,7 +539,7 @@ const handleLint = (cwd: string, spawn: typeof spawnSync, log: (...args: unknown
 
 const handleTest = (cwd: string, spawn: typeof spawnSync, log: (...args: unknown[]) => void): void => {
   const appRoot = requireAppRoot(cwd, "sc test");
-  const runner = path.join(appRoot, "src", "tests", "runner.ts");
+  const runner = path.join(appRoot, "src", "tests", "runner.spec.ts");
   if (fs.existsSync(runner)) {
     runSpawn("npx", ["vitest", "run", runner], appRoot, spawn, log);
     return;

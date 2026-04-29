@@ -111,16 +111,21 @@ describe("scaffolded app", () => {
     expect(rootPackage.devDependencies).not.toHaveProperty("@sculptor/cli");
     expect(fs.existsSync(path.join(projectRoot, "src/main.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/registry.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "README.md"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/app/controllers/health.controller.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/health.controller.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.spec.ts"))).toBe(true);
     expect(fs.readFileSync(path.join(projectRoot, "src/tests/registry.ts"), "utf8")).toContain(
       "./main.spec.js"
     );
     expect(fs.readFileSync(path.join(projectRoot, "src/tests/runner.ts"), "utf8")).toContain(
       'await import(spec);'
+    );
+    expect(fs.readFileSync(path.join(projectRoot, "README.md"), "utf8")).toContain(
+      "src/tests/runner.spec.ts"
     );
     expect(fs.existsSync(path.join(projectRoot, "sculptor.json"))).toBe(true);
     expect(sculptor.routing.style).toBe("decorator");

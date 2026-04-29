@@ -7,6 +7,10 @@ export interface FrameworkConfig {
     entryFile?: string;
     devServer?: "tsnode" | "nodemon";
   };
+  logging?: {
+    enabled?: boolean;
+    dogMode?: boolean;
+  };
   routing?: {
     style?: "decorator" | "functional" | "hybrid";
   };

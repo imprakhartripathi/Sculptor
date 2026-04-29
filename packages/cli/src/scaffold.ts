@@ -140,6 +140,27 @@ ${devDependenciesFor(devServer)}
   }
 }`;
 
+const rootReadmeTemplate = (appName: string): string => `# ${appName}
+
+## Scripts
+
+- \`npm run start\` - start the app
+- \`npm run dev\` - start the app in development mode
+- \`npm run build\` - compile the app
+- \`npm run lint\` - lint the source
+- \`npm run test\` - run the test suite through \`sc test\`
+
+## Test Harness
+
+The scaffold generates a Vitest registry under \`src/tests\`:
+
+- \`src/tests/registry.ts\` collects generated spec entrypoints
+- \`src/tests/runner.ts\` imports the registry entries
+- \`src/tests/runner.spec.ts\` is the Vitest entrypoint used by \`sc test\`
+
+When you add new specs under \`src/tests\`, rerun \`sc test\` and the harness will pick them up.
+`;
+
 const rootTsconfigTemplate = `{
   "compilerOptions": {
     "target": "ES2020",
@@ -420,6 +441,9 @@ for (const spec of testRegistry) {
 }
 `;
 
+const testHarnessSpecTemplate = (): string => `import "./runner.js";
+`;
+
 const collectSpecPaths = (dir: string, rootDir: string = dir): string[] => {
   if (!fs.existsSync(dir)) {
     return [];
@@ -445,7 +469,11 @@ const collectSpecPaths = (dir: string, rootDir: string = dir): string[] => {
     }
 
     const relativePath = normalizeRelativePath(path.relative(rootDir, fullPath));
-    if (relativePath === "registry.ts" || relativePath === "runner.ts") {
+    if (
+      relativePath === "registry.ts" ||
+      relativePath === "runner.ts" ||
+      relativePath === "runner.spec.ts"
+    ) {
       continue;
     }
 
@@ -462,6 +490,7 @@ export const syncTestHarness = (targetDir: string): void => {
 
   writeTextFile(path.join(testsDir, "registry.ts"), testRegistryTemplate(specs));
   writeTextFile(path.join(testsDir, "runner.ts"), testRunnerTemplate());
+  writeTextFile(path.join(testsDir, "runner.spec.ts"), testHarnessSpecTemplate());
 };
 
 const controllerSpecTemplate = (name: string, sourcePath: string): string => {
@@ -634,6 +663,7 @@ const appShellFiles = (
   metadata: ScaffoldProjectMetadata
 ): Record<string, string> => ({
   "package.json": rootPackageJsonTemplate(metadata.appName, metadata.version, metadata.devServer),
+  "README.md": rootReadmeTemplate(metadata.appName),
   "tsconfig.json": rootTsconfigTemplate,
   "sculptor.json": sculptorTemplate(
     metadata.mode,

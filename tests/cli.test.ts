@@ -161,6 +161,8 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(projectRoot, "src/tests/health.routes.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "README.md"))).toBe(true);
     expect(fs.readFileSync(path.join(projectRoot, "src/tests/registry.ts"), "utf8")).toContain(
       "./main.spec.js"
     );
@@ -220,6 +222,8 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(projectRoot, "src/tests/health.routes.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "README.md"))).toBe(true);
     expect(fs.readFileSync(path.join(projectRoot, "src/tests/registry.ts"), "utf8")).toContain(
       "./main.spec.js"
     );
@@ -284,7 +288,7 @@ describe("cli", () => {
     });
     expect(calls[3]).toEqual({
       command: "npx",
-      args: ["vitest", "run", path.join(cwd, "src", "tests", "runner.ts")]
+      args: ["vitest", "run", path.join(cwd, "src", "tests", "runner.spec.ts")]
     });
     expect(calls[4]).toEqual({
       command: "npx",
@@ -369,6 +373,8 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(cwd, "src/tests/session.routes.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/runner.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/tests/runner.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "README.md"))).toBe(true);
     expect(
       fs.readFileSync(path.join(cwd, "src/tests/registry.ts"), "utf8")
     ).toContain("./profile.controller.spec.js");
