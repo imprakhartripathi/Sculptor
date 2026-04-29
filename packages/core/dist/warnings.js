@@ -16,8 +16,8 @@ export const logRegistryState = (rootDir, registry) => {
     const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
     process.env.SCULPTOR_ROOT_DIR = rootDir;
     try {
-        paws.log(`Registered Controllers: ${controllerCount}`);
-        paws.log(`Registered Routes: ${routeCount}`);
+        paws.system(`Registered Controllers: ${controllerCount}`);
+        paws.system(`Registered Routes: ${routeCount}`);
         const srcRoot = String(getConfig("project.srcRoot", rootDir) ?? "src");
         const controllersDir = path.join(rootDir, srcRoot, "app", "controllers");
         if (!fs.existsSync(controllersDir)) {
@@ -30,9 +30,9 @@ export const logRegistryState = (rootDir, registry) => {
             .map(toControllerClassName)
             .filter((className) => !registeredNames.has(className));
         if (missingControllers.length > 0) {
-            paws.warn("Unregistered Controllers Found:");
+            paws.warn("Unregistered controller detected.");
             for (const controllerName of missingControllers) {
-                paws.warn(` - ${controllerName}`);
+                paws.warn(`${controllerName} is not registered. Please add it to registry.ts.`);
             }
         }
     }

@@ -34,6 +34,8 @@ describe("runtime banner", () => {
 
     expect(output).not.toContain("SculptorTS Server");
     expect(output).not.toContain("Booting application");
+    expect(output).toContain("[Sculptor] Mode: development | Port: 0");
     expect(output).toMatch(/SculptorTS listening on port \d+\nLocal: http:\/\/localhost:\d+/);
+    expect(output).toContain("🐾 Sculptor ready.");
   });
 });

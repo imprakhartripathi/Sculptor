@@ -8,6 +8,10 @@ export const startApp = async ({ registry: appRegistry, rootDir = process.cwd(),
     const envPort = process.env.PORT ? Number(process.env.PORT) : undefined;
     const resolvedPort = port ?? envPort ?? Number(loadedConfig.runtime.app?.port ?? 3000);
     const prefix = loadedConfig.runtime.app?.prefix ?? "";
+    const loggingEnabled = loadedConfig.framework.logging?.enabled !== false;
+    if (loggingEnabled) {
+        console.log(`[Sculptor] Mode: development | Port: ${resolvedPort}`);
+    }
     logRegistryState(rootDir, appRegistry);
     const app = express();
     app.use(express.json());
@@ -23,17 +27,20 @@ export const startApp = async ({ registry: appRegistry, rootDir = process.cwd(),
         server = app.listen(resolvedPort, () => {
             const address = server.address();
             const actualPort = typeof address === "object" && address !== null ? address.port : resolvedPort;
-            const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
-            process.env.SCULPTOR_ROOT_DIR = rootDir;
-            try {
-                paws.system(`SculptorTS listening on port ${actualPort}\nLocal: http://localhost:${actualPort}`);
-            }
-            finally {
-                if (previousRootDir === undefined) {
-                    delete process.env.SCULPTOR_ROOT_DIR;
+            if (loggingEnabled) {
+                const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
+                process.env.SCULPTOR_ROOT_DIR = rootDir;
+                try {
+                    paws.system(`SculptorTS listening on port ${actualPort}\nLocal: http://localhost:${actualPort}`);
+                    console.log("🐾 Sculptor ready.");
                 }
-                else {
-                    process.env.SCULPTOR_ROOT_DIR = previousRootDir;
+                finally {
+                    if (previousRootDir === undefined) {
+                        delete process.env.SCULPTOR_ROOT_DIR;
+                    }
+                    else {
+                        process.env.SCULPTOR_ROOT_DIR = previousRootDir;
+                    }
                 }
             }
             resolve(server);

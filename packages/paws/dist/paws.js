@@ -15,9 +15,12 @@ const standardLabels = {
 };
 const bootLines = [
     "Booting Application - Bruno, Coki & Dodie are active and aware.",
-    "[ Bruno ] : Hello Developer, I am Bruno, I will help you by warning you about any unexpected thing that happens in the code",
+    " ",
+    "[ Bruno ] : Hello Developer, I am Bruno, I will help you by warning you about any unexpected thing that happens in the code.",
     "[ Coki ] : Hi Dev! I am Coki, I am your companion through this development journey, I will log everything that the system does",
-    "[ Dodie ] : Sup Dudes! I'm your Dawg Dodie, I'll bark at you if something goes wrong, Woof!!"
+    "[ Dodie ] : Sup Dudes! I'm your Dawg Dodie, I'll bark if something breaks. Woof!!",
+    " ",
+    "----------------------------------------",
 ];
 const getRenderSpec = (mode, level) => mode === "dog" ? dogLabels[level] : standardLabels[level];
 const applyColors = (message, spec) => {
