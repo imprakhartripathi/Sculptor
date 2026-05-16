@@ -16,12 +16,18 @@ const joinPaths = (prefix, path) => {
     }
     return `${normalizedPrefix}${normalizedPath}`;
 };
-const createRouteHandler = (instance, route) => {
+const createRouteHandler = (instance, controllerMetadata, route) => {
     const handler = instance[route.propertyKey];
     if (typeof handler !== "function") {
         throw new TypeError(`Route handler "${route.propertyKey}" is not a function on controller instance.`);
     }
     return (req, res, next) => {
+        res.locals.sculptorRoute = {
+            controller: controllerMetadata.controllerName,
+            method: route.method,
+            path: joinPaths(controllerMetadata.prefix, route.path),
+            propertyKey: route.propertyKey
+        };
         void Promise.resolve()
             .then(() => handler.call(instance, req, res, next))
             .then((result) => {
@@ -43,7 +49,7 @@ export const registerControllerRoutes = (app, controllerMetadata, controllerInst
             ...controllerMetadata.middlewares,
             ...route.middlewares
         ];
-        registrar.call(app, fullPath, ...middlewares, createRouteHandler(controllerInstance, route));
+        registrar.call(app, fullPath, ...middlewares, createRouteHandler(controllerInstance, controllerMetadata, route));
     }
 };
 //# sourceMappingURL=route-registry.js.map

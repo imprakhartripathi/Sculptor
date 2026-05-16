@@ -8,6 +8,7 @@ The SculptorTS router package provides decorators and router assembly for contro
 - Attaches middleware metadata to classes and methods
 - Scans decorated controllers
 - Builds an Express router from controller classes and router instances
+- Exposes a Sculptor-style functional router builder
 
 ## Public API
 
@@ -15,10 +16,12 @@ The SculptorTS router package provides decorators and router assembly for contro
 import {
   Controller,
   Get,
+  Patch,
   Post,
   Put,
   Delete,
   Use,
+  FunctionalRouter,
   createRouter
 } from "@sculptor/router";
 ```
@@ -36,6 +39,10 @@ If you omit the prefix, it defaults to `/`.
 Attach HTTP method metadata to a controller method.
 
 If you omit the path, it defaults to `/`.
+
+### `Patch(path)`
+
+Attach `PATCH` method metadata to a controller method.
 
 ### `Use(...middlewares)`
 
@@ -109,6 +116,10 @@ const router = createRouter({
   routes: [],
   prefix: "/api"
 });
+
+const users = FunctionalRouter("/users");
+users.get("/", (req, res) => res.json([]));
+users.at("/verify-token").patch((req, res) => res.json({ ok: true }));
 ```
 
 ## Types
@@ -118,10 +129,16 @@ The package exports the core router types used by the framework:
 - `ControllerClass`
 - `ControllerMetadata`
 - `CreateRouterOptions`
+- `Err`
 - `HttpMethod`
+- `Nxt`
 - `MethodRouteMetadata`
 - `ParameterResolverContext`
+- `Req`
+- `Res`
 - `RouteDefinition`
+- `FunctionalRouterLike`
+- `RouterSource`
 
 ## Package Scripts
 

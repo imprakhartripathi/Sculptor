@@ -30,6 +30,7 @@ const joinPaths = (prefix: string, path: string): string => {
 
 const createRouteHandler = (
   instance: object,
+  controllerMetadata: ControllerMetadata,
   route: RouteDefinition
 ): RequestHandler => {
   const handler = (instance as Record<string, unknown>)[route.propertyKey];
@@ -41,6 +42,13 @@ const createRouteHandler = (
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
+    res.locals.sculptorRoute = {
+      controller: controllerMetadata.controllerName,
+      method: route.method,
+      path: joinPaths(controllerMetadata.prefix, route.path),
+      propertyKey: route.propertyKey
+    };
+
     void Promise.resolve()
       .then(() => (handler as RouteHandler).call(instance, req, res, next))
       .then((result) => {
@@ -78,7 +86,7 @@ export const registerControllerRoutes = (
       app,
       fullPath,
       ...middlewares,
-      createRouteHandler(controllerInstance, route)
+      createRouteHandler(controllerInstance, controllerMetadata, route)
     );
   }
 };

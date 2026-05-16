@@ -17,7 +17,7 @@ const listControllerMethods = (prototype) => {
     }
     return [...names];
 };
-const toRouteDefinitions = (prototype, methodName) => {
+const toRouteDefinitions = (controllerName, prototype, methodName) => {
     const routeMetadata = Reflect.getMetadata(METADATA_KEYS.methodRoutes, prototype, methodName) ?? [];
     if (routeMetadata.length === 0) {
         return [];
@@ -27,7 +27,10 @@ const toRouteDefinitions = (prototype, methodName) => {
         method: route.method,
         path: route.path,
         propertyKey: methodName,
-        middlewares: [...methodMiddlewares]
+        middlewares: [...methodMiddlewares],
+        source: {
+            label: `${controllerName}.${methodName}()`
+        }
     }));
 };
 export const scanController = (controllerClass) => {
@@ -37,8 +40,9 @@ export const scanController = (controllerClass) => {
     }
     const controllerMiddlewares = Reflect.getMetadata(METADATA_KEYS.controllerMiddlewares, controllerClass) ?? [];
     const methods = listControllerMethods(controllerClass.prototype);
-    const routes = methods.flatMap((methodName) => toRouteDefinitions(controllerClass.prototype, methodName));
+    const routes = methods.flatMap((methodName) => toRouteDefinitions(controllerClass.name, controllerClass.prototype, methodName));
     return {
+        controllerName: controllerClass.name,
         prefix,
         middlewares: [...controllerMiddlewares],
         routes

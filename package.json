@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace @sculptor/config && npm run build --workspace @sculptor/paws && npm run build --workspace @sculptor/router && npm run build --workspace @sculptor/core && npm run build --workspace @sculptor/cli && npm -w app run build",
+    "build": "npm run build --workspace @sculptor/config && npm run build --workspace @sculptor/paws && npm run build --workspace @sculptor/router && npm run build --workspace @sculptor/core && npm run build --workspace @sculptor/template-registry && npm run build --workspace @sculptor/cli && npm -w app run build",
     "start": "npm -w app run start",
     "dev": "npm -w app run dev",
     "cli": "npm -w packages/cli run cli",

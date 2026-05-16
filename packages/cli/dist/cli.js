@@ -6,25 +6,24 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "@sculptor/config";
+import { getConfigValue, listConfigEntries, setConfigValue } from "./config-commands.js";
 import { controllerHelp, generateHelp, generateResourceFiles, middlewareHelp, moduleHelp, parseGenerateMode, readModeFromFlags, routeHelp, scaffoldProject, syncTestHarness, typeHelp, writeGeneratedFiles } from "./scaffold.js";
+import { loadPluginModule, resolvePluginManifest } from "./plugins.js";
 const cliPackageVersion = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const versionLabel = cliPackageVersion.version ?? "0.0.0";
-const isCommand = (value) => ["new", "start", "dev", "build", "lint", "test", "generate", "g", "help"].includes(value);
+const isCommand = (value) => ["new", "start", "dev", "build", "lint", "test", "generate", "g", "help", "config", "add"].includes(value);
 const isFlag = (value) => value.startsWith("-");
 const isVersionFlag = (value) => ["-v", "--v", "--version", "version", "v"].includes(value);
-const sculptorCliBanner = String.raw `+-------------------------------------------------------------------------+
-|                                                                         |
-|   ███████╗ ██████╗██╗   ██╗██╗     ██████╗ ████████╗ ██████╗ ██████╗    |
-|   ██╔════╝██╔════╝██║   ██║██║     ██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗   |
-|   ███████╗██║     ██║   ██║██║     ██████╔╝   ██║   ██║   ██║██████╔╝   |
-|   ╚════██║██║     ██║   ██║██║     ██╔═══╝    ██║   ██║   ██║██╔══██╗   |
-|   ███████║╚██████╗╚██████╔╝███████╗██║        ██║   ╚██████╔╝██║  ██║   |
-|   ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═╝   |
-|                                                                         |
-|                             SculptorTS CLI                              |
-|                                 v${versionLabel}                                  |
-|                                                                         |
-+-------------------------------------------------------------------------+`;
+const sculptorCliBanner = String.raw `
+                                                                         
+   ███████╗ ██████╗██╗   ██╗██╗     ██████╗ ████████╗ ██████╗ ██████╗    
+   ██╔════╝██╔════╝██║   ██║██║     ██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗   
+   ███████╗██║     ██║   ██║██║     ██████╔╝   ██║   ██║   ██║██████╔╝   
+   ╚════██║██║     ██║   ██║██║     ██╔═══╝    ██║   ██║   ██║██╔══██╗   
+   ███████║╚██████╗╚██████╔╝███████╗██║        ██║   ╚██████╔╝██║  ██║   
+   ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═╝   
+                                                                         
+                        SculptorTS CLI v${versionLabel}`;
 const sculptorDevBanner = (version) => String.raw `
                                                                          
    ███████╗ ██████╗██╗   ██╗██╗     ██████╗ ████████╗ ██████╗ ██████╗    
@@ -34,7 +33,7 @@ const sculptorDevBanner = (version) => String.raw `
    ███████║╚██████╗╚██████╔╝███████╗██║        ██║   ╚██████╔╝██║  ██║   
    ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═╝   
                                                                          
-                             SculptorTS CLI v${version}`;
+                        SculptorTS CLI v${version}`;
 const buildBanner = (title, subtitle) => {
     if (title === "SculptorTS CLI" && subtitle === `v${versionLabel}`) {
         return sculptorCliBanner;
@@ -50,12 +49,14 @@ const buildBanner = (title, subtitle) => {
     };
     return [
         line,
-        center("   _____             _                  _____ _____  "),
-        center("  / ____|           | |                / ____|_   _| "),
-        center(" | (___   ___   ___ | |_ ___  _ __ ___| (___   | |   "),
-        center("  \\___ \\ / _ \\ / _ \\| __/ _ \\| '__/ _ \\\\___ \\  | |   "),
-        center("  ____) | (_) | (_) | || (_) | | |  __/____) |_| |_  "),
-        center(" |_____/ \\___/ \\___/ \\__\\___/|_|  \\___|_____/|_____| "),
+        center("   _____               _                           "),
+        center("  / ____|             | |      _______             "),
+        center(" | (___   ____  _   _ | | ____|_______|____  _ __  "),
+        center("  \\___ \\ ___|| | | || |/ _ \\  | | /  _  \/ '__| "),
+        center("  ____) | (___ | |_| || || (_) / | | | (_) || |    "),
+        center(" |_____/ \\___/\\___/ \\_|_\\ /  |_| \_____/|_|    "),
+        center("                         | |                       "),
+        center("                         |_|                       "),
         center(""),
         center(title),
         subtitle ? center(subtitle) : center(""),
@@ -182,6 +183,8 @@ sc <command> [options]
 - \`sc lint\`
 - \`sc test\`
 - \`sc generate\` or \`sc g\`
+- \`sc config <get|set|list>\`
+- \`sc add <plugin>\`
 - \`sc help\`
   - \`sc help generate\`
   - \`sc help controller\`
@@ -196,6 +199,10 @@ sc <command> [options]
 - \`middleware\` / \`mw\`
 - \`type\` / \`t\`
 - \`route\` / \`r\`
+
+## Binary Alias
+
+- \`sculptor\` is equivalent to \`sc\`
 `);
 };
 const printHelp = (topic, log) => {
@@ -225,6 +232,14 @@ const printHelp = (topic, log) => {
     }
     if (topic === "route") {
         log(routeHelp);
+        return;
+    }
+    if (topic === "config") {
+        log(`# Config\n\nUse \`sc config get\`, \`sc config set\`, or \`sc config list\`.`);
+        return;
+    }
+    if (topic === "add") {
+        log(`# Add\n\nUsage: \`sc add <plugin>\``);
         return;
     }
     printMainHelp(log);
@@ -365,6 +380,53 @@ const handleTest = (cwd, spawn, log) => {
     }
     runSpawn("npx", ["vitest", "run"], appRoot, spawn, log);
 };
+const handleConfig = (args, cwd, log, error) => {
+    const [subcommand, ...rest] = args;
+    if (!subcommand || subcommand === "help") {
+        log(`Usage: sc config <get|set|list> [path]`);
+        return;
+    }
+    const appRoot = requireAppRoot(cwd, "sc config");
+    if (subcommand === "get") {
+        const pathExpression = rest[0];
+        if (!pathExpression) {
+            error("Usage: sc config get <path>");
+            process.exit(1);
+        }
+        const value = getConfigValue(appRoot, pathExpression);
+        log(typeof value === "string" ? value : JSON.stringify(value, null, 2));
+        return;
+    }
+    if (subcommand === "set") {
+        const assignment = rest[0];
+        if (!assignment) {
+            error("Usage: sc config set <path=value>");
+            process.exit(1);
+        }
+        setConfigValue(appRoot, assignment);
+        log(`Updated config: ${assignment.split("=")[0]}`);
+        return;
+    }
+    if (subcommand === "list") {
+        for (const entry of listConfigEntries(appRoot)) {
+            log(`${entry.path} = ${typeof entry.value === "string" ? entry.value : JSON.stringify(entry.value)}`);
+        }
+        return;
+    }
+    error(`Unknown config subcommand "${subcommand}".`);
+    process.exit(1);
+};
+const handleAdd = async (args, cwd, log, error) => {
+    const pluginName = args[0];
+    if (!pluginName) {
+        error("Usage: sc add <plugin>");
+        process.exit(1);
+    }
+    const appRoot = requireAppRoot(cwd, "sc add");
+    const module = await loadPluginModule(pluginName);
+    const manifest = resolvePluginManifest(module, pluginName);
+    log(`Loaded plugin ${manifest.name} for ${appRoot}`);
+};
 const handleGenerate = (args, cwd, prompt, log, error) => {
     const [kindInput, ...restInput] = args;
     if (!kindInput) {
@@ -405,6 +467,7 @@ const handleGenerate = (args, cwd, prompt, log, error) => {
             : rest.includes("-enum") || rest.includes("-e")
                 ? "enum"
                 : "type";
+    const functionalRoutes = rest.includes("--functional") || rest.includes("--with-routes");
     if (kind !== "type" &&
         !explicitName &&
         !outputDir) {
@@ -424,7 +487,7 @@ const handleGenerate = (args, cwd, prompt, log, error) => {
             const parts = outputDir.split(/[\\/]/).filter(Boolean);
             return parts[parts.length - 1] ?? "index";
         })();
-    const files = generateResourceFiles(kind, resolvedName, mode, devServer, outputDir, typeVariant, resolveTestingGenerate(appRoot));
+    const files = generateResourceFiles(kind, resolvedName, mode, devServer, outputDir, typeVariant, functionalRoutes, resolveTestingGenerate(appRoot));
     const targetDir = appRoot;
     writeGeneratedFiles(targetDir, files);
     if (resolveTestingGenerate(appRoot)) {
@@ -477,6 +540,12 @@ export const runCli = async (argv = process.argv, options = {}) => {
             return;
         case "test":
             handleTest(cwd, spawn, log);
+            return;
+        case "config":
+            handleConfig(args, cwd, log, error);
+            return;
+        case "add":
+            await handleAdd(args, cwd, log, error);
             return;
         case "generate":
         case "g":

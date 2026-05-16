@@ -7,6 +7,7 @@ The framework is split into small packages:
 - `@sculptor/core` for runtime startup
 - `@sculptor/router` for decorators and route assembly
 - `@sculptor/config` for config loading
+- `@sculptor/template-registry` for scaffold templates and generator assets
 - `@sculptor/paws` for logging with dog mode personalities
 - `@sculptor/cli` for scaffolding, generation, and app commands
 
@@ -20,6 +21,7 @@ If you are new to the framework, read this file first, then move into the packag
 | `@sculptor/core` | App bootstrap, registry wiring, and runtime server startup | [packages/core/README.md](packages/core/README.md) |
 | `@sculptor/router` | Controller decorators, method decorators, and Express router assembly | [packages/router/README.md](packages/router/README.md) |
 | `@sculptor/config` | Framework and runtime config loading | [packages/config/README.md](packages/config/README.md) |
+| `@sculptor/template-registry` | Template metadata and generator templates | [packages/template-registry/README.md](packages/template-registry/README.md) |
 | `@sculptor/paws` | Logger utility with standard and dog mode output | [packages/paws/README.md](packages/paws/README.md) |
 
 ## How The Framework Is Structured

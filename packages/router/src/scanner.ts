@@ -33,7 +33,11 @@ const listControllerMethods = (prototype: object): string[] => {
   return [...names];
 };
 
-const toRouteDefinitions = (prototype: object, methodName: string): RouteDefinition[] => {
+const toRouteDefinitions = (
+  controllerName: string,
+  prototype: object,
+  methodName: string
+): RouteDefinition[] => {
   const routeMetadata: MethodRouteMetadata[] =
     Reflect.getMetadata(METADATA_KEYS.methodRoutes, prototype, methodName) ?? [];
 
@@ -48,7 +52,10 @@ const toRouteDefinitions = (prototype: object, methodName: string): RouteDefinit
     method: route.method,
     path: route.path,
     propertyKey: methodName,
-    middlewares: [...methodMiddlewares]
+    middlewares: [...methodMiddlewares],
+    source: {
+      label: `${controllerName}.${methodName}()`
+    }
   }));
 };
 
@@ -71,10 +78,11 @@ export const scanController = <TInstance>(
 
   const methods = listControllerMethods(controllerClass.prototype);
   const routes: RouteDefinition[] = methods.flatMap((methodName) =>
-    toRouteDefinitions(controllerClass.prototype, methodName)
+    toRouteDefinitions(controllerClass.name, controllerClass.prototype, methodName)
   );
 
   return {
+    controllerName: controllerClass.name,
     prefix,
     middlewares: [...controllerMiddlewares],
     routes

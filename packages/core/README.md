@@ -8,11 +8,12 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 - Loads runtime config and framework config
 - Creates the app router from controllers and routes
 - Exposes the shared registry shape used by scaffolded apps
+- Exposes `bootstrapApp({ listen: false })` for validation and CI flows
 
 ## Public API
 
 ```ts
-import { createRouter, startApp, registry } from "@sculptor/core";
+import { createRouter, FunctionalRouter, startApp, registry } from "@sculptor/core";
 ```
 
 ### `startApp(options)`
@@ -35,10 +36,12 @@ The default empty registry shape exported by the package.
 
 - `Controller`
 - `Get`
+- `Patch`
 - `Post`
 - `Put`
 - `Delete`
 - `Use`
+- `FunctionalRouter`
 - `createRouter`
 - `loadConfig`
 - `getConfig`
@@ -51,7 +54,7 @@ When `startApp()` runs:
 2. The runtime chooses a port
 3. Express middleware is attached
 4. The registry is turned into an Express router
-5. The server begins listening
+5. The server begins listening, unless `listen: false` is requested
 6. The runtime logs the port and localhost URL
 
 Startup output:
@@ -112,6 +115,7 @@ await startApp({
 | Pass `port: 0` | The OS chooses a free port and the runtime reports the actual port |
 | Pass a registry with controllers | Decorator metadata is scanned and registered |
 | Pass a registry with routes | Route routers are mounted directly |
+| Pass a registry with functional routers | Functional builders are converted to Express routers |
 | Use `loadConfig()` | Framework and runtime config are loaded and cached per root directory |
 | Use `getConfig("app.port")` | The merged runtime value is returned if present |
 

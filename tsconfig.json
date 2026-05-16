@@ -20,6 +20,7 @@
     { "path": "./packages/paws" },
     { "path": "./packages/core" },
     { "path": "./packages/router" },
+    { "path": "./packages/template-registry" },
     { "path": "./packages/cli" }
   ]
 }

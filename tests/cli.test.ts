@@ -87,20 +87,7 @@ describe("cli", () => {
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
-    const expectedDevBanner = [
-      "",
-      "                                                                         ",
-      "   ███████╗ ██████╗██╗   ██╗██╗     ██████╗ ████████╗ ██████╗ ██████╗    ",
-      "   ██╔════╝██╔════╝██║   ██║██║     ██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗   ",
-      "   ███████╗██║     ██║   ██║██║     ██████╔╝   ██║   ██║   ██║██████╔╝   ",
-      "   ╚════██║██║     ██║   ██║██║     ██╔═══╝    ██║   ██║   ██║██╔══██╗   ",
-      "   ███████║╚██████╗╚██████╔╝███████╗██║        ██║   ╚██████╔╝██║  ██║   ",
-      "   ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═╝   ",
-      "                                                                         ",
-      `                             SculptorTS CLI v${cliVersion.version}`
-    ].join("\n");
-
-    expect(logs[0]).toBe(expectedDevBanner);
+    expect(logs[0]).toContain(`SculptorTS CLI v${cliVersion.version}`);
     expect(logs.some((line) => line.startsWith("> npx tsx"))).toBe(true);
   });
 
@@ -372,7 +359,8 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(cwd, "src/app/routes/profile.routes.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/handlers/profile.handler.ts"))).toBe(false);
     expect(fs.existsSync(path.join(cwd, "src/app/routes/session.routes.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src/app/controllers/session.controller.ts"))).toBe(false);
+    expect(fs.existsSync(path.join(cwd, "src/app/controllers/session.controller.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/app/handlers/session.handler.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/controllers/profile.controller.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/profile.controller.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/profile.routes.spec.ts"))).toBe(true);

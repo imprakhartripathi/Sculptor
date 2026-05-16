@@ -1,7 +1,8 @@
 export { Controller } from "@sculptor/router";
-export { Delete, Get, Post, Put, Use } from "@sculptor/router";
+export { Delete, Get, Patch, Post, Put, Use } from "@sculptor/router";
+export { FunctionalRouter } from "@sculptor/router";
 export { createRouter } from "@sculptor/router";
-export { loadConfig, getConfig } from "@sculptor/config";
+export { loadConfig, getConfig, redactConfig } from "@sculptor/config";
+export { bootstrapApp, startApp } from "./runtime.js";
 export { registry } from "./registry.js";
-export { startApp } from "./runtime.js";
 //# sourceMappingURL=index.js.map

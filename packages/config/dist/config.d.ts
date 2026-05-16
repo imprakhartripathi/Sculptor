@@ -1,8 +1,9 @@
+import { redactConfig } from "./redact.js";
 export interface FrameworkConfig {
     project?: {
         srcRoot?: string;
         entryFile?: string;
-        devServer?: "tsnode" | "nodemon";
+        devServer?: "tsx" | "nodemon";
     };
     logging?: {
         enabled?: boolean;
@@ -16,6 +17,10 @@ export interface FrameworkConfig {
         framework?: "vitest";
     };
     frameworkLock?: boolean;
+    plugins?: {
+        enabled?: boolean;
+        registry?: string[];
+    };
 }
 export interface RuntimeConfig {
     app?: {
@@ -29,5 +34,16 @@ export interface LoadedConfig {
     merged: FrameworkConfig & RuntimeConfig;
     rootDir: string;
 }
-export declare const loadConfig: (rootDir?: string) => LoadedConfig;
-export declare const getConfig: (pathExpression: string, rootDir?: string) => unknown;
+export interface ConfigOverrides {
+    framework?: Partial<FrameworkConfig>;
+    runtime?: Partial<RuntimeConfig>;
+}
+export declare class ConfigError extends Error {
+    name: string;
+}
+export declare class ConfigInterpolationError extends ConfigError {
+    name: string;
+}
+export declare const loadConfig: (rootDir?: string, overrides?: ConfigOverrides) => LoadedConfig;
+export declare const getConfig: (pathExpression: string, rootDir?: string, overrides?: ConfigOverrides) => unknown;
+export { redactConfig };

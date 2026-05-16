@@ -2,34 +2,74 @@ import express from "express";
 import { loadConfig } from "@sculptor/config";
 import { paws } from "@sculptor/paws";
 import { createRouter } from "@sculptor/router";
+import { requestContextMiddleware } from "./context.js";
+import { createFrameworkErrorMiddleware } from "./errors.js";
 import { logRegistryState } from "./warnings.js";
-export const startApp = async ({ registry: appRegistry, rootDir = process.cwd(), port }) => {
+const resolvePort = (port, envPort, fallback) => {
+    if (port !== undefined) {
+        return port;
+    }
+    if (envPort !== undefined && envPort.trim()) {
+        const parsed = Number(envPort);
+        if (!Number.isNaN(parsed)) {
+            return parsed;
+        }
+    }
+    const numericFallback = Number(fallback);
+    return Number.isNaN(numericFallback) ? 3000 : numericFallback;
+};
+const createApp = () => {
+    const app = express();
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use(requestContextMiddleware());
+    return app;
+};
+const bootstrap = ({ registry: appRegistry, rootDir = process.cwd(), port, listen = true, onError }) => {
     const loadedConfig = loadConfig(rootDir);
-    const envPort = process.env.PORT ? Number(process.env.PORT) : undefined;
-    const resolvedPort = port ?? envPort ?? Number(loadedConfig.runtime.app?.port ?? 3000);
+    const resolvedPort = resolvePort(port, process.env.PORT, loadedConfig.runtime.app?.port);
     const prefix = loadedConfig.runtime.app?.prefix ?? "";
     const loggingEnabled = loadedConfig.framework.logging?.enabled !== false;
     if (loggingEnabled) {
         console.log(`[Sculptor] Mode: development | Port: ${resolvedPort}`);
     }
     logRegistryState(rootDir, appRegistry);
-    const app = express();
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
+    const app = createApp();
     const router = createRouter({
         controllers: appRegistry.controllers,
         routes: appRegistry.routes,
         prefix
     });
     app.use(router);
+    app.use(createFrameworkErrorMiddleware(onError));
+    return {
+        app,
+        router,
+        resolvedPort,
+        rootDir,
+        listen
+    };
+};
+export async function bootstrapApp(options) {
+    const bootstrapped = bootstrap(options);
+    if (!options.listen) {
+        return {
+            app: bootstrapped.app,
+            router: bootstrapped.router,
+            rootDir: bootstrapped.rootDir,
+            port: bootstrapped.resolvedPort,
+            listen: false
+        };
+    }
     return await new Promise((resolve) => {
-        let server;
-        server = app.listen(resolvedPort, () => {
+        const server = bootstrapped.app.listen(bootstrapped.resolvedPort, () => {
             const address = server.address();
-            const actualPort = typeof address === "object" && address !== null ? address.port : resolvedPort;
+            const actualPort = typeof address === "object" && address !== null ? address.port : bootstrapped.resolvedPort;
+            const loadedConfig = loadConfig(bootstrapped.rootDir);
+            const loggingEnabled = loadedConfig.framework.logging?.enabled !== false;
             if (loggingEnabled) {
                 const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
-                process.env.SCULPTOR_ROOT_DIR = rootDir;
+                process.env.SCULPTOR_ROOT_DIR = bootstrapped.rootDir;
                 try {
                     paws.system(`SculptorTS listening on port ${actualPort}\nLocal: http://localhost:${actualPort}`);
                     console.log("🐾 Sculptor ready.");
@@ -43,8 +83,30 @@ export const startApp = async ({ registry: appRegistry, rootDir = process.cwd(),
                     }
                 }
             }
-            resolve(server);
+            resolve({
+                app: bootstrapped.app,
+                router: bootstrapped.router,
+                rootDir: bootstrapped.rootDir,
+                port: bootstrapped.resolvedPort,
+                listen: true,
+                server
+            });
         });
     });
-};
+}
+export async function startApp(options = { registry: { controllers: [], routes: [], services: [] } }) {
+    const result = options.listen === false
+        ? await bootstrapApp({
+            ...options,
+            listen: false
+        })
+        : await bootstrapApp({
+            ...options,
+            listen: true
+        });
+    if (!result.listen) {
+        return result;
+    }
+    return result.server;
+}
 //# sourceMappingURL=runtime.js.map

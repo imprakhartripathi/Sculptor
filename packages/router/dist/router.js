@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import express from "express";
+import { detectRouteCollisions } from "./collisions.js";
 import { registerControllerRoutes } from "./route-registry.js";
 import { scanController } from "./scanner.js";
 const normalizePrefix = (prefix) => {
@@ -11,16 +12,22 @@ const normalizePrefix = (prefix) => {
 };
 const instantiateController = (controllerClass) => new controllerClass();
 export const createRouter = ({ controllers = [], routes = [], prefix }) => {
+    const scannedControllers = controllers.map((controllerClass) => scanController(controllerClass));
+    const normalizedPrefix = normalizePrefix(prefix);
+    detectRouteCollisions(scannedControllers, routes, normalizedPrefix ?? "");
     const coreRouter = express.Router();
-    for (const controllerClass of controllers) {
-        const metadata = scanController(controllerClass);
+    for (const [index, controllerClass] of controllers.entries()) {
+        const metadata = scannedControllers[index];
+        if (!metadata) {
+            continue;
+        }
         const instance = instantiateController(controllerClass);
         registerControllerRoutes(coreRouter, metadata, instance);
     }
     for (const routeRouter of routes) {
-        coreRouter.use(routeRouter);
+        const expressRouter = "toRouter" in routeRouter ? routeRouter.toRouter() : routeRouter;
+        coreRouter.use(expressRouter);
     }
-    const normalizedPrefix = normalizePrefix(prefix);
     if (!normalizedPrefix) {
         return coreRouter;
     }

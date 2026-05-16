@@ -1,6 +1,18 @@
-import type { NextFunction, Request, RequestHandler, Response, Router } from "express";
+import type {
+  ErrorRequestHandler,
+  NextFunction,
+  Request,
+  RequestHandler,
+  Response,
+  Router
+} from "express";
 
-export type HttpMethod = "get" | "post" | "put" | "delete";
+export type HttpMethod = "get" | "post" | "put" | "patch" | "delete";
+
+export type Req = Request;
+export type Res = Response;
+export type Nxt = NextFunction;
+export type Err = ErrorRequestHandler;
 
 export interface MethodRouteMetadata {
   method: HttpMethod;
@@ -10,9 +22,13 @@ export interface MethodRouteMetadata {
 export interface RouteDefinition extends MethodRouteMetadata {
   propertyKey: string;
   middlewares: RequestHandler[];
+  source?: {
+    label: string;
+  };
 }
 
 export interface ControllerMetadata {
+  controllerName: string;
   prefix: string;
   middlewares: RequestHandler[];
   routes: RouteDefinition[];
@@ -22,8 +38,18 @@ export type ControllerClass<TInstance = object> = new (...args: never[]) => TIns
 
 export interface CreateRouterOptions {
   controllers?: ControllerClass[];
-  routes?: Router[];
+  routes?: RouterSource[];
   prefix?: string;
+}
+
+export type FunctionalRouterLike = {
+  toRouter(): Router;
+};
+
+export type RouterSource = Router | FunctionalRouterLike;
+
+export interface RouteRegistrationSource {
+  label: string;
 }
 
 export interface ParameterResolverContext {
