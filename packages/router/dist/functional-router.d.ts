@@ -10,6 +10,7 @@ declare class FunctionalRouterScope implements FunctionalRouterLike {
     constructor(prefix?: string, sourceLabel?: string, inheritedMiddlewares?: RequestHandler[], router?: express.Router);
     private register;
     use(...middlewares: RequestHandler[]): this;
+    use(path: string, ...middlewares: RequestHandler[]): this;
     at(path: string): FunctionalRouterScope;
     get(pathOrHandler: string | RequestHandler | FunctionalHandler, ...handlers: Array<RequestHandler | FunctionalHandler>): this;
     post(pathOrHandler: string | RequestHandler | FunctionalHandler, ...handlers: Array<RequestHandler | FunctionalHandler>): this;

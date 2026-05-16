@@ -52,6 +52,15 @@ If you use `Use()` on a class, the middleware applies to all routes in that cont
 
 If you use `Use()` on a method, the middleware applies only to that route.
 
+### `FunctionalRouter(prefix)`
+
+Creates a Sculptor-native functional router scope.
+
+- `users.get("/", handler)` registers a route at the current scope
+- `users.at("/verify-token").patch(handler)` registers a nested scoped route
+- `users.use(auth)` applies middleware to later routes in the same scope
+- `users.use("/audit", auth)` mounts middleware at a scoped sub-path
+
 ## Router Assembly
 
 `createRouter()` accepts:

@@ -26,7 +26,8 @@ const toRouterLabel = (router) => {
     }
     return "functional router";
 };
-const isFunctionalRouterLike = (value) => typeof value.toRouter === "function";
+const isFunctionalRouterLike = (value) => typeof value.toRouter === "function" &&
+    typeof value.use === "function";
 const collectRouterRoutes = (router, label) => {
     const stack = (router.stack ?? []);
     const entries = [];

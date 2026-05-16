@@ -62,8 +62,12 @@ class FunctionalRouterScope {
         this.router[method](routePath, ...middlewareList, routeHandler);
         return this;
     }
-    use(...middlewares) {
-        this.inheritedMiddlewares.push(...middlewares);
+    use(pathOrMiddleware, ...middlewares) {
+        if (typeof pathOrMiddleware !== "string") {
+            this.inheritedMiddlewares.push(pathOrMiddleware, ...middlewares);
+            return this;
+        }
+        this.router.use(joinPaths(this.prefix, pathOrMiddleware), ...middlewares);
         return this;
     }
     at(path) {

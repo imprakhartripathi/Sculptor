@@ -151,6 +151,9 @@ describe("router", () => {
     users.use((_req, _res, next) => {
       next();
     });
+    users.use("/audit", (_req, _res, next) => {
+      next();
+    });
     users.get("/", (_req, _res) => {
       return { mode: "functional" };
     });
@@ -186,5 +189,6 @@ describe("router", () => {
 
     expect(methods).toContain("get");
     expect(methods).toContain("patch");
+    expect((users.toRouter() as unknown as { stack?: unknown[] }).stack?.length).toBeGreaterThan(0);
   });
 });

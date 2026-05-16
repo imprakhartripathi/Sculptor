@@ -1,6 +1,6 @@
 import type { Router } from "express";
 
-import type { ControllerMetadata, RouteDefinition } from "./types.js";
+import type { ControllerMetadata, FunctionalRouterLike, RouteDefinition } from "./types.js";
 import type { RouterSource } from "./types.js";
 import { RouteCollisionError } from "./errors.js";
 
@@ -50,8 +50,9 @@ const toRouterLabel = (router: Router): string => {
   return "functional router";
 };
 
-const isFunctionalRouterLike = (value: RouterSource): value is { toRouter(): Router } =>
-  typeof (value as { toRouter?: unknown }).toRouter === "function";
+const isFunctionalRouterLike = (value: RouterSource): value is FunctionalRouterLike =>
+  typeof (value as { toRouter?: unknown }).toRouter === "function" &&
+  typeof (value as { use?: unknown }).use === "function";
 
 const collectRouterRoutes = (router: Router, label: string): RegisteredRouteEntry[] => {
   const stack = ((router as unknown as { stack?: Array<Record<string, unknown>> }).stack ?? []) as Array<

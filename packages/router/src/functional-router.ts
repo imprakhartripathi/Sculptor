@@ -106,8 +106,18 @@ class FunctionalRouterScope implements FunctionalRouterLike {
     return this;
   }
 
-  use(...middlewares: RequestHandler[]): this {
-    this.inheritedMiddlewares.push(...middlewares);
+  use(...middlewares: RequestHandler[]): this;
+  use(path: string, ...middlewares: RequestHandler[]): this;
+  use(
+    pathOrMiddleware: string | RequestHandler,
+    ...middlewares: RequestHandler[]
+  ): this {
+    if (typeof pathOrMiddleware !== "string") {
+      this.inheritedMiddlewares.push(pathOrMiddleware, ...middlewares);
+      return this;
+    }
+
+    this.router.use(joinPaths(this.prefix, pathOrMiddleware), ...middlewares);
     return this;
   }
 
