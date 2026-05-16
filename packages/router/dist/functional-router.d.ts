@@ -1,16 +1,15 @@
 import express from "express";
-import type { RequestHandler } from "express";
+import type { ErrorRequestHandler, RequestHandler } from "express";
 import type { FunctionalRouterLike, Req, Res, Nxt } from "./types.js";
 type FunctionalHandler = (req: Req, res: Res, next: Nxt) => unknown;
 declare class FunctionalRouterScope implements FunctionalRouterLike {
     private readonly router;
     private readonly prefix;
     private readonly sourceLabel;
-    private readonly inheritedMiddlewares;
-    constructor(prefix?: string, sourceLabel?: string, inheritedMiddlewares?: RequestHandler[], router?: express.Router);
+    constructor(prefix?: string, sourceLabel?: string, router?: express.Router);
     private register;
-    use(...middlewares: RequestHandler[]): this;
-    use(path: string, ...middlewares: RequestHandler[]): this;
+    use(...middlewares: Array<RequestHandler | ErrorRequestHandler>): this;
+    use(path: string, ...middlewares: Array<RequestHandler | ErrorRequestHandler>): this;
     at(path: string): FunctionalRouterScope;
     get(pathOrHandler: string | RequestHandler | FunctionalHandler, ...handlers: Array<RequestHandler | FunctionalHandler>): this;
     post(pathOrHandler: string | RequestHandler | FunctionalHandler, ...handlers: Array<RequestHandler | FunctionalHandler>): this;

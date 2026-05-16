@@ -1,5 +1,5 @@
 import express from "express";
-import type { RequestHandler } from "express";
+import type { ErrorRequestHandler, RequestHandler } from "express";
 
 import { registerRouterSource } from "./collisions.js";
 import type { FunctionalRouterLike, HttpMethod, Req, Res, Nxt, RouterSource } from "./types.js";
@@ -58,17 +58,14 @@ class FunctionalRouterScope implements FunctionalRouterLike {
   private readonly router: express.Router;
   private readonly prefix: string;
   private readonly sourceLabel: string;
-  private readonly inheritedMiddlewares: RequestHandler[];
 
   constructor(
     prefix = "",
     sourceLabel?: string,
-    inheritedMiddlewares: RequestHandler[] = [],
     router: express.Router = express.Router()
   ) {
     this.prefix = prefix;
     this.sourceLabel = sourceLabel ?? `FunctionalRouter(${JSON.stringify(prefix || "/")})`;
-    this.inheritedMiddlewares = inheritedMiddlewares;
     this.router = router;
     registerRouterSource(this.router, this.sourceLabel);
   }
@@ -92,10 +89,9 @@ class FunctionalRouterScope implements FunctionalRouterLike {
 
     const routePath = joinPaths(this.prefix, localPath);
     const routeHandler = createRouteHandler(method, routePath, lastHandler as FunctionalHandler);
-    const middlewareList = [
-      ...this.inheritedMiddlewares,
-      ...middlewares.reverse().filter((value): value is RequestHandler => typeof value === "function")
-    ];
+    const middlewareList = middlewares.reverse().filter(
+      (value): value is RequestHandler => typeof value === "function"
+    );
 
     (this.router[method] as (path: string, ...handlers: RequestHandler[]) => unknown)(
       routePath,
@@ -106,14 +102,14 @@ class FunctionalRouterScope implements FunctionalRouterLike {
     return this;
   }
 
-  use(...middlewares: RequestHandler[]): this;
-  use(path: string, ...middlewares: RequestHandler[]): this;
+  use(...middlewares: Array<RequestHandler | ErrorRequestHandler>): this;
+  use(path: string, ...middlewares: Array<RequestHandler | ErrorRequestHandler>): this;
   use(
-    pathOrMiddleware: string | RequestHandler,
-    ...middlewares: RequestHandler[]
+    pathOrMiddleware: string | RequestHandler | ErrorRequestHandler,
+    ...middlewares: Array<RequestHandler | ErrorRequestHandler>
   ): this {
     if (typeof pathOrMiddleware !== "string") {
-      this.inheritedMiddlewares.push(pathOrMiddleware, ...middlewares);
+      this.router.use(pathOrMiddleware, ...middlewares);
       return this;
     }
 
@@ -125,7 +121,6 @@ class FunctionalRouterScope implements FunctionalRouterLike {
     return new FunctionalRouterScope(
       joinPaths(this.prefix, path),
       this.sourceLabel,
-      [...this.inheritedMiddlewares],
       this.router
     );
   }

@@ -147,7 +147,8 @@ describe("cli", () => {
     expect(sculptor.project?.devServer).toBe("tsx");
     expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
     expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.routes.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.route.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/handlers/health.route.handler.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.spec.ts"))).toBe(true);
@@ -210,7 +211,8 @@ describe("cli", () => {
     expect(sculptor.project.devServer).toBe("tsx");
     expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
     expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.routes.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.route.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/handlers/health.route.handler.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.spec.ts"))).toBe(true);
@@ -343,7 +345,7 @@ describe("cli", () => {
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
-    await runCli(["node", "sc", "g", "r", "profile", "--functional"], {
+    await runCli(["node", "sc", "g", "r", "profile"], {
       cwd,
       log: (value) => logs.push(String(value)),
       error: () => undefined,
@@ -356,16 +358,17 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(cwd, "src/app/services/profile.module.ts"))).toBe(false);
     expect(fs.existsSync(path.join(cwd, "src/app/middlewares/auth.middleware.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/mongodb/user.interface.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src/app/routes/profile.routes.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/app/routes/profile.route.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/app/handlers/profile.route.handler.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/handlers/profile.handler.ts"))).toBe(false);
-    expect(fs.existsSync(path.join(cwd, "src/app/routes/session.routes.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/app/routes/session.route.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/controllers/session.controller.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src/app/handlers/session.handler.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/app/handlers/session.route.handler.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/controllers/profile.controller.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/profile.controller.spec.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src/tests/profile.routes.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/tests/profile.route.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/auth.middleware.spec.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src/tests/session.routes.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/tests/session.route.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/runner.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/runner.spec.ts"))).toBe(true);

@@ -1,0 +1,13 @@
+import type { TypeVariant } from "../utils.js";
+export declare const controllerSpecTemplate: (name: string, sourcePath: string) => string;
+export declare const serviceSpecTemplate: (name: string, sourcePath: string) => string;
+export declare const routeSpecTemplate: (name: string, sourcePath: string) => string;
+export declare const middlewareSpecTemplate: (name: string, sourcePath: string) => string;
+export declare const createDecoratorController: (name: string, outputDir?: string) => Record<string, string>;
+export declare const createFunctionalArtifacts: (name: string, routeDir?: string, handlerDir?: string) => Record<string, string>;
+export declare const createServiceResource: (name: string) => Record<string, string>;
+export declare const createModuleResource: (name: string) => Record<string, string>;
+export declare const createMiddlewareResource: (name: string) => Record<string, string>;
+export declare const createRouteResource: (name: string, routeDir: string) => Record<string, string>;
+export declare const createHandlerResource: (name: string) => Record<string, string>;
+export declare const createTypeResource: (name: string, variant: TypeVariant, outputDir: string) => Record<string, string>;

@@ -20,6 +20,8 @@ The CLI consumes this package through the same generator helpers it used before:
 - `controllerHelp`
 - `generateHelp`
 
+Route generation now emits paired `*.route.ts` and `*.route.handler.ts` files by default.
+
 ## Why It Exists
 
 This keeps the CLI focused on command flow while the template package owns generator content.

@@ -308,7 +308,7 @@ sc --version
 
 What it does:
 - In decorator mode, writes `*.controller.ts`
-- In functional mode, writes `*.routes.ts` and `*.handler.ts`
+- In functional mode, writes `*.route.ts` and `*.route.handler.ts`
 - In hybrid mode, writes both controller and functional files
 
 Examples:
@@ -388,7 +388,9 @@ If you omit the name, the CLI falls back to `index` unless a custom output path 
 ### Route generation
 
 What it does:
-- Writes `*.routes.ts` in functional or hybrid mode
+- Writes `*.route.ts` and `*.route.handler.ts`
+- Uses the Sculptor functional router builder
+- Generates a paired handler with try/catch and error middleware boilerplate
 
 Examples:
 ```bash
@@ -396,9 +398,6 @@ sc generate route user
 sc g r user
 sc g r user in src/app/routes
 ```
-
-Decorator mode behavior:
-- The CLI refuses route generation
 
 ## Test Generation
 
@@ -413,14 +412,14 @@ Generated spec names:
 
 - `user.controller.spec.ts`
 - `user.service.spec.ts`
-- `user.routes.spec.ts`
+- `user.route.spec.ts`
 - `auth.middleware.spec.ts`
 
 Default scaffold test files:
 
 - `src/tests/main.spec.ts`
 - `src/tests/health.controller.spec.ts`
-- `src/tests/health.routes.spec.ts`
+- `src/tests/health.route.spec.ts`
 - `src/tests/registry.ts`
 - `src/tests/runner.ts`
 - `src/tests/runner.spec.ts`

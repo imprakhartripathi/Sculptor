@@ -60,6 +60,7 @@ Creates a Sculptor-native functional router scope.
 - `users.at("/verify-token").patch(handler)` registers a nested scoped route
 - `users.use(auth)` applies middleware to later routes in the same scope
 - `users.use("/audit", auth)` mounts middleware at a scoped sub-path
+- `users.use(errorHandler)` can mount an Express error handler for the scope
 
 ## Router Assembly
 
@@ -104,6 +105,7 @@ If you do not pass a prefix, the router is returned unwrapped.
 | Pass `prefix: "/api"` to `createRouter` | The mounted router appears under `/api` |
 | Pass `prefix: "api"` | The prefix is normalized to `/api` |
 | Pass `prefix: "/api/"` | The trailing slash is removed |
+| Pass an error handler to `users.use(...)` | The router can surface scoped error middleware |
 | Pass no controllers and no routes | An empty router is returned |
 | Pass both controllers and routes | Both styles are mounted into one router |
 

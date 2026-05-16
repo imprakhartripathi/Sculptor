@@ -37,10 +37,9 @@ const createRouteHandler = (method, routePath, handler) => {
     };
 };
 class FunctionalRouterScope {
-    constructor(prefix = "", sourceLabel, inheritedMiddlewares = [], router = express.Router()) {
+    constructor(prefix = "", sourceLabel, router = express.Router()) {
         this.prefix = prefix;
         this.sourceLabel = sourceLabel ?? `FunctionalRouter(${JSON.stringify(prefix || "/")})`;
-        this.inheritedMiddlewares = inheritedMiddlewares;
         this.router = router;
         registerRouterSource(this.router, this.sourceLabel);
     }
@@ -55,23 +54,20 @@ class FunctionalRouterScope {
         }
         const routePath = joinPaths(this.prefix, localPath);
         const routeHandler = createRouteHandler(method, routePath, lastHandler);
-        const middlewareList = [
-            ...this.inheritedMiddlewares,
-            ...middlewares.reverse().filter((value) => typeof value === "function")
-        ];
+        const middlewareList = middlewares.reverse().filter((value) => typeof value === "function");
         this.router[method](routePath, ...middlewareList, routeHandler);
         return this;
     }
     use(pathOrMiddleware, ...middlewares) {
         if (typeof pathOrMiddleware !== "string") {
-            this.inheritedMiddlewares.push(pathOrMiddleware, ...middlewares);
+            this.router.use(pathOrMiddleware, ...middlewares);
             return this;
         }
         this.router.use(joinPaths(this.prefix, pathOrMiddleware), ...middlewares);
         return this;
     }
     at(path) {
-        return new FunctionalRouterScope(joinPaths(this.prefix, path), this.sourceLabel, [...this.inheritedMiddlewares], this.router);
+        return new FunctionalRouterScope(joinPaths(this.prefix, path), this.sourceLabel, this.router);
     }
     get(pathOrHandler, ...handlers) {
         return this.register("get", pathOrHandler, handlers);

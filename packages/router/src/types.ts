@@ -44,8 +44,8 @@ export interface CreateRouterOptions {
 
 export type FunctionalRouterLike = {
   toRouter(): Router;
-  use(...middlewares: RequestHandler[]): FunctionalRouterLike;
-  use(path: string, ...middlewares: RequestHandler[]): FunctionalRouterLike;
+  use(...middlewares: Array<RequestHandler | ErrorRequestHandler>): FunctionalRouterLike;
+  use(path: string, ...middlewares: Array<RequestHandler | ErrorRequestHandler>): FunctionalRouterLike;
 };
 
 export type RouterSource = Router | FunctionalRouterLike;

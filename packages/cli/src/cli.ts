@@ -724,11 +724,6 @@ const handleGenerate = (
     process.exit(1);
   }
 
-  if (kind === "route" && mode === "decorator") {
-    error("Routers can only be scaffolded in functional or hybrid mode.");
-    process.exit(1);
-  }
-
   const appRoot = requireAppRoot(cwd, "sc generate");
 
   const resolvedName =
