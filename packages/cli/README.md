@@ -32,8 +32,12 @@ It handles:
 
 ## Entry Points
 
-- Binary: `sc`
+- Primary Binary: `sc`
+- Fallback Binary: `sculptor`
+- Temporary Execution (via Package Runner): `npx sc` or `npx sculptor`
 - Programmatic API: `runCli()`
+
+Note: If the Binary: `sc` resolves to Windows Service Control or conflicts with any other Binary, use `sculptor` instead. Otherwise use `npx` as prefix to invoke the CLI via Package Runner. 
 
 ## Command Reference
 
@@ -55,15 +59,15 @@ Flags:
 | --- | --- |
 | `--name <value>` | Sets the app name |
 | `--version <value>` | Sets the scaffolded app version |
-| `--style <decorator|functional|hybrid>` | Sets the routing mode |
+| `--style <decorator/functional/hybrid>` | Sets the routing mode |
 | `--decorator` | Shortcut for decorator mode |
 | `--functional` | Shortcut for functional mode |
 | `--hybrid` | Shortcut for hybrid mode |
-| `--frameworkLock <true|false>` | Sets framework lock |
-| `--frameworklock <true|false>` | Alias for framework lock |
-| `--framework-lock <true|false>` | Alias for framework lock |
-| `--dev-server <tsx|nodemon>` | Selects the dev server |
-| `--devserver <tsx|nodemon>` | Alias for dev server |
+| `--frameworkLock <true/false>` | Sets framework lock |
+| `--frameworklock <true/false>` | Alias for framework lock |
+| `--framework-lock <true/false>` | Alias for framework lock |
+| `--dev-server <tsx/nodemon>` | Selects the dev server |
+| `--devserver <tsx/nodemon>` | Alias for dev server |
 | `--tsx` | Shortcut for `tsx` dev server |
 | `--nodemon` | Shortcut for `nodemon` dev server |
 
@@ -309,6 +313,7 @@ What it does:
 
 Examples:
 ```bash
+sc generate controller user
 sc g c user
 sc g c user in src/app/users
 sc g c in src/app/users
@@ -327,6 +332,7 @@ What it does:
 
 Examples:
 ```bash
+sc generate service user
 sc g s user
 sc g s user in src/app/services
 ```
@@ -338,6 +344,7 @@ What it does:
 
 Examples:
 ```bash
+sc generate module user
 sc g m user
 sc g mo user
 ```
@@ -349,6 +356,7 @@ What it does:
 
 Examples:
 ```bash
+sc generate middleware auth
 sc g mw auth
 sc g mw auth in src/app/middlewares
 ```
@@ -364,14 +372,15 @@ What it does:
 
 Examples:
 ```bash
-sc g t user
 sc g t
+sc generate type user
+sc g t user
+sc generate type user -interface
 sc g t user -i
-sc g t user -interface
+sc generate type user -class
 sc g t user -c
-sc g t user -class
+sc generate type user -enum
 sc g t user -e
-sc g t user -enum
 ```
 
 If you omit the name, the CLI falls back to `index` unless a custom output path lets it infer a name from the directory.
@@ -383,6 +392,7 @@ What it does:
 
 Examples:
 ```bash
+sc generate route user
 sc g r user
 sc g r user in src/app/routes
 ```
@@ -479,7 +489,7 @@ If you are inside a Sculptor app root, use:
 
 ```bash
 sc dev
-sc g c user
+sc generate controller user
 sc test
 ```
 

@@ -1,9 +1,10 @@
 {
   "name": "@sculptor/cli",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "type": "module",
   "bin": {
-    "sc": "./bin/sc.js"
+    "sc": "./bin/sc.js",
+    "sculptor": "./bin/sc.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
