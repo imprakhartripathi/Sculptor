@@ -106,12 +106,17 @@ export const ${toCamelCase(name)}Handler = async (
       resource: "${name}",
       path: req.path
     });
-  } catch (error) {
+  } catch (error: unknown) {
     next(error);
   }
 };
 
-export const ${toCamelCase(name)}ErrorHandler: Err = (error, _req, res, next) => {
+export const ${toCamelCase(name)}ErrorHandler: Err = (
+  error: unknown,
+  _req: Req,
+  res: Res,
+  next: Nxt
+): void => {
   if (res.headersSent) {
     next(error);
     return;

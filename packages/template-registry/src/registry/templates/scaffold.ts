@@ -82,8 +82,7 @@ export const rootTsconfigTemplate = `{
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": false,
-    "skipLibCheck": true,
-    "types": ["node"]
+    "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]
@@ -212,8 +211,7 @@ export const appTsconfigTemplate = `{
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": false,
-    "skipLibCheck": true,
-    "types": ["node"]
+    "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]
@@ -303,12 +301,17 @@ export const healthHandler = async (
     }
 
     res.json({ status: "ok" });
-  } catch (error) {
+  } catch (error: unknown) {
     next(error);
   }
 };
 
-export const healthErrorHandler: Err = (error, _req, res, next) => {
+export const healthErrorHandler: Err = (
+  error: unknown,
+  _req: Req,
+  res: Res,
+  next: Nxt
+): void => {
   if (res.headersSent) {
     next(error);
     return;
@@ -324,7 +327,7 @@ export const healthRouteTemplate = `import { FunctionalRouter } from "@sculptor/
 
 import { healthErrorHandler, healthHandler } from "../handlers/health.route.handler.js";
 
-export const health = FunctionalRouter("/health");
+export const health = FunctionalRouter("/status");
 
 health.get(healthHandler);
 health.at("/ping").get(healthHandler);
@@ -366,8 +369,8 @@ describe("health", () => {
     const app = express();
     app.use(health.toRouter());
 
-    await request(app).get("/health").expect(200).expect({ status: "ok" });
-    await request(app).get("/ping").expect(200).expect({ message: "pong" });
+    await request(app).get("/status").expect(200).expect({ status: "ok" });
+    await request(app).get("/status/ping").expect(200).expect({ message: "pong" });
   });
 });
 `;

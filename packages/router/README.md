@@ -56,6 +56,12 @@ If you use `Use()` on a method, the middleware applies only to that route.
 
 Creates a Sculptor-native functional router scope.
 
+You usually do not need to annotate the returned value. Use it like Express:
+
+```ts
+const users = FunctionalRouter("/users");
+```
+
 - `users.get("/", handler)` registers a route at the current scope
 - `users.at("/verify-token").patch(handler)` registers a nested scoped route
 - `users.use(auth)` applies middleware to later routes in the same scope
@@ -148,7 +154,8 @@ The package exports the core router types used by the framework:
 - `Req`
 - `Res`
 - `RouteDefinition`
-- `FunctionalRouterLike`
+- `FunctionalRouterScope` as the preferred explicit type name
+- `FunctionalRouterLike` for advanced typing and compatibility
 - `RouterSource`
 
 ## Package Scripts
