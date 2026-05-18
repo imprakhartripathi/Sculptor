@@ -2,6 +2,12 @@
 
 The SculptorTS router package provides decorators and router assembly for controller-based and hybrid app styles.
 
+## Version Policy
+
+- Deprecated range: `0.2.0` through `0.2.4`
+- Current stable: `0.2.5`
+- Reason: the earlier releases were published before the current collision detection, `@Patch()` support, and typed functional-router scope model were stabilized.
+
 ## What This Package Does
 
 - Defines controller and method decorators
@@ -62,11 +68,13 @@ You usually do not need to annotate the returned value. Use it like Express:
 const users = FunctionalRouter("/users");
 ```
 
-- `users.get("/", handler)` registers a route at the current scope
+- `users.get(handler)` registers `GET /users`
+- `users.get("/verify-token", handler)` registers a child route under the same scope
 - `users.at("/verify-token").patch(handler)` registers a nested scoped route
 - `users.use(auth)` applies middleware to later routes in the same scope
 - `users.use("/audit", auth)` mounts middleware at a scoped sub-path
 - `users.use(errorHandler)` can mount an Express error handler for the scope
+- the returned scope type is `FunctionalRouterScope`
 
 ## Router Assembly
 
@@ -77,6 +85,8 @@ const users = FunctionalRouter("/users");
 - `prefix`
 
 It returns an Express router.
+
+It also detects duplicate registrations before the server starts. If two routes resolve to the same method and path, Sculptor throws a framework error with source labels when available.
 
 ### Controller Path Behavior
 
@@ -106,6 +116,7 @@ If you do not pass a prefix, the router is returned unwrapped.
 | --- | --- |
 | Add `@Controller("/health")` | The controller routes are grouped under `/health` |
 | Add `@Get("/")` to a method | The method is registered for `GET /` relative to the controller prefix |
+| Add `@Patch("/")` to a method | The method is registered for `PATCH /` relative to the controller prefix |
 | Add `@Use(logger)` to a controller class | Every controller route uses `logger` |
 | Add `@Use(auth)` to a single method | Only that route uses `auth` |
 | Pass `prefix: "/api"` to `createRouter` | The mounted router appears under `/api` |
@@ -114,11 +125,12 @@ If you do not pass a prefix, the router is returned unwrapped.
 | Pass an error handler to `users.use(...)` | The router can surface scoped error middleware |
 | Pass no controllers and no routes | An empty router is returned |
 | Pass both controllers and routes | Both styles are mounted into one router |
+| Register the same method and path twice | Bootstrap fails with a typed route-collision error |
 
 ## Example
 
 ```ts
-import { Controller, Get, createRouter } from "@sculptor/router";
+import { Controller, FunctionalRouter, Get, createRouter } from "@sculptor/router";
 
 @Controller("/health")
 class HealthController {
@@ -135,7 +147,7 @@ const router = createRouter({
 });
 
 const users = FunctionalRouter("/users");
-users.get("/", (req, res) => res.json([]));
+users.get((req, res) => res.json([]));
 users.at("/verify-token").patch((req, res) => res.json({ ok: true }));
 ```
 

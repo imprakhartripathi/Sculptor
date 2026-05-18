@@ -2,6 +2,12 @@
 
 The SculptorTS core package boots the HTTP server and exposes the primary framework runtime API.
 
+## Version Policy
+
+- Deprecated range: `0.2.0` through `0.2.2`
+- Current stable: `0.2.3`
+- Reason: the earlier releases predate the stabilized request context, framework error hook, and non-listening bootstrap flow, so they are more likely to surface bootstrap and typing issues in generated apps.
+
 ## What This Package Does
 
 - Starts an Express server from a registry
@@ -9,11 +15,21 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 - Creates the app router from controllers and routes
 - Exposes the shared registry shape used by scaffolded apps
 - Exposes `bootstrapApp({ listen: false })` for validation and CI flows
+- Exposes request context and framework error hook support
 
 ## Public API
 
 ```ts
-import { createRouter, FunctionalRouter, startApp, registry } from "@sculptor/core";
+import {
+  createRouter,
+  FunctionalRouter,
+  Req,
+  Res,
+  Nxt,
+  Err,
+  startApp,
+  registry
+} from "@sculptor/core";
 ```
 
 ### `startApp(options)`
@@ -25,6 +41,8 @@ Options:
 - `registry`: the app registry
 - `rootDir`: app root, defaults to `process.cwd()`
 - `port`: optional explicit port override
+- `listen`: set to `false` to bootstrap without binding a socket
+- `onError`: optional framework-level error hook
 
 ### `registry`
 
@@ -45,6 +63,14 @@ The default empty registry shape exported by the package.
 - `createRouter`
 - `loadConfig`
 - `getConfig`
+- `redactConfig`
+
+It also re-exports the request typing helpers:
+
+- `Req`
+- `Res`
+- `Nxt`
+- `Err`
 
 ## Startup Behavior
 
@@ -83,6 +109,33 @@ If the resolved port is `0`, the runtime reads the actual bound port from the se
 | Routes | Mounts the Express routers directly |
 | Both controllers and routes | Combines both into one app router |
 | No routes | Starts a server, but nothing is mounted beyond Express body parsing |
+| `listen: false` | Bootstraps the app, validates the registry, and returns without binding a socket |
+| `onError` provided | Framework errors are routed through the lightweight hook before Express handling continues |
+
+## Request Context
+
+Every request gets a lightweight `ctx` object on `req`:
+
+- `requestId` is generated automatically or read from `x-request-id`
+- `meta` is a request-scoped bag for middleware and handlers
+- `user` is available for app-specific auth context
+
+Middleware can extend this object without needing a DI container.
+
+## Error Hooks
+
+`startApp({ onError })` and `bootstrapApp({ onError })` pass framework-normalized errors to a lightweight hook.
+
+The hook receives:
+
+- `request`
+- `response`
+- `route` metadata when available
+- `timestamp`
+- optional controller info
+- the request `context`
+
+This preserves Express compatibility while giving apps one central place to shape framework errors.
 
 ## Config Behavior
 

@@ -10,6 +10,12 @@ It handles:
 - Dev and production startup paths
 - Help and version output
 
+## Version Policy
+
+- Deprecated range: `0.2.0` through `0.2.1`
+- Current stable: `0.2.2`
+- Reason: the earlier release predates the current template-registry layout, the `sc config` command set, and the route/handler generation contract used by the current CLI.
+
 ## Quick Command Sheet
 
 | Command | What it does |
@@ -20,8 +26,12 @@ It handles:
 | `sc build` | Builds the app |
 | `sc lint` | Lints the app |
 | `sc test` | Runs the test suite |
+| `sc config get <path>` | Reads a config value |
+| `sc config set <path=value>` | Writes a config value |
+| `sc config list` | Lists the merged config |
 | `sc generate` / `sc g` | Generates framework resources |
 | `sc g c user` | Generates a controller resource |
+| `sc g r user` | Generates a functional route and handler pair |
 | `sc g c user in src/app/users` | Generates into a custom path |
 | `sc g c in src/app/users` | Infers the name from the path and generates there |
 | `sc g t user -e` | Generates an enum type file |
@@ -187,6 +197,24 @@ Behavior:
 What it solves:
 - You can keep a generated test registry while still having a standard test command
 
+### `sc config`
+
+What it does:
+- Reads, writes, and lists app config
+
+How it is used:
+```bash
+sc config get logging
+sc config set logging.dogMode=false
+sc config list
+```
+
+Behavior:
+- `get` reads a dot-path from the merged config
+- `set` writes a dot-path assignment while preserving JSON formatting when possible
+- `list` prints the flattened merged config
+- `sculptor` supports the same command set as `sc`
+
 ### `sc generate` and `sc g`
 
 What it does:
@@ -211,7 +239,8 @@ Supported kinds:
 
 Behavior:
 - Refuses to run outside a Sculptor app root
-- Refuses route generation in decorator mode
+- Controller generation is controller-first by default and can opt into paired functional route files with `--functional`
+- Route generation always writes the paired functional route and handler files
 - Rewrites the test registry when test generation is enabled
 
 What it solves:
@@ -291,6 +320,7 @@ sc --version
 | Flag | Meaning |
 | --- | --- |
 | `--functional` | Use functional routing mode |
+| `--with-routes` | Alias for paired functional route generation |
 | `--decorator` | Use decorator routing mode |
 | `--hybrid` | Use hybrid routing mode |
 | `--style` | Explicitly set routing mode |
@@ -307,9 +337,9 @@ sc --version
 ### Controller generation
 
 What it does:
-- In decorator mode, writes `*.controller.ts`
-- In functional mode, writes `*.route.ts` and `*.route.handler.ts`
-- In hybrid mode, writes both controller and functional files
+- Writes `*.controller.ts` by default
+- Pass `--functional` or `--with-routes` to also write paired `*.route.ts` and `*.route.handler.ts` files
+- In functional-first app flows, the paired functional route files are the standard route shape
 
 Examples:
 ```bash
@@ -317,6 +347,7 @@ sc generate controller user
 sc g c user
 sc g c user in src/app/users
 sc g c in src/app/users
+sc g c user --functional
 ```
 
 If you use `in <path>`:
@@ -489,6 +520,8 @@ If you are inside a Sculptor app root, use:
 ```bash
 sc dev
 sc generate controller user
+sc generate route user
+sc config list
 sc test
 ```
 
