@@ -110,6 +110,7 @@ describe("scaffolded app", () => {
       "reflect-metadata": "^0.2.2"
     });
     expect(rootPackage.devDependencies).not.toHaveProperty("@sculptor/cli");
+    expect(fs.existsSync(path.join(projectRoot, ".gitignore"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/main.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "README.md"))).toBe(true);
@@ -122,6 +123,10 @@ describe("scaffolded app", () => {
     expect(fs.readFileSync(path.join(projectRoot, "src/tests/registry.ts"), "utf8")).toContain(
       "./main.spec.js"
     );
+    expect(fs.readFileSync(path.join(projectRoot, ".gitignore"), "utf8")).toContain(
+      "node_modules/"
+    );
+    expect(fs.readFileSync(path.join(projectRoot, ".gitignore"), "utf8")).toContain("dist/");
     expect(fs.readFileSync(path.join(projectRoot, "src/tests/runner.ts"), "utf8")).toContain(
       'await import(spec);'
     );

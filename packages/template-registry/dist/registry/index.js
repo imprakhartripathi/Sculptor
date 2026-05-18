@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ensureDir, writeTextFile } from "../fs.js";
 import { normalizeRelativePath, resolveFileStem, resolveGeneratorOutputDir } from "./utils.js";
-import { eslintConfigTemplate, healthControllerSpecTemplate, healthControllerTemplate, healthModuleTemplate, healthRouteHandlerTemplate, healthRouteSpecTemplate, healthRouteTemplate, healthServiceTemplate, mainSpecTemplate, mainTemplate, propsTemplate, registryTemplate, rootPackageJsonTemplate, rootReadmeTemplate, rootTsconfigTemplate, sculptorTemplate, testHarnessSpecTemplate, testRegistryTemplate, testRunnerTemplate, vitestConfigTemplate } from "./templates/scaffold.js";
+import { eslintConfigTemplate, healthControllerSpecTemplate, healthControllerTemplate, healthModuleTemplate, healthRouteHandlerTemplate, healthRouteSpecTemplate, healthRouteTemplate, healthServiceTemplate, mainSpecTemplate, mainTemplate, rootGitignoreTemplate, propsTemplate, registryTemplate, rootPackageJsonTemplate, rootReadmeTemplate, rootTsconfigTemplate, sculptorTemplate, testHarnessSpecTemplate, testRegistryTemplate, testRunnerTemplate, vitestConfigTemplate } from "./templates/scaffold.js";
 import { controllerSpecTemplate, createDecoratorController, createFunctionalArtifacts, createMiddlewareResource, createModuleResource, createRouteResource, createServiceResource, createTypeResource, middlewareSpecTemplate, routeSpecTemplate, serviceSpecTemplate } from "./templates/resources.js";
 import { controllerHelp, generateHelp, middlewareHelp, moduleHelp, routeHelp, typeHelp } from "./templates/help.js";
 export { controllerHelp, generateHelp, middlewareHelp, moduleHelp, routeHelp, typeHelp };
@@ -51,6 +51,7 @@ export const scaffoldProject = (metadata, targetDir) => {
         ...appShellFiles(metadata),
         "eslint.config.js": eslintConfigTemplate,
         "vitest.config.ts": vitestConfigTemplate,
+        ".gitignore": rootGitignoreTemplate,
         "src/app/services/health.service.ts": healthServiceTemplate,
         "src/app/modules/health.module.ts": healthModuleTemplate
     };

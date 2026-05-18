@@ -25,6 +25,7 @@ import {
   healthServiceTemplate,
   mainSpecTemplate,
   mainTemplate,
+  rootGitignoreTemplate,
   propsTemplate,
   registryTemplate,
   rootPackageJsonTemplate,
@@ -126,6 +127,7 @@ export const scaffoldProject = (
     ...appShellFiles(metadata),
     "eslint.config.js": eslintConfigTemplate,
     "vitest.config.ts": vitestConfigTemplate,
+    ".gitignore": rootGitignoreTemplate,
     "src/app/services/health.service.ts": healthServiceTemplate,
     "src/app/modules/health.module.ts": healthModuleTemplate
   };

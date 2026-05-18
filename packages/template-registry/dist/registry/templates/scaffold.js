@@ -58,6 +58,23 @@ The scaffold generates a Vitest registry under \`src/tests\`:
 
 When you add new specs under \`src/tests\`, rerun \`sc test\` and the harness will pick them up.
 `;
+export const rootGitignoreTemplate = `node_modules/
+dist/
+coverage/
+.env
+.env.*
+.DS_Store
+.vscode/
+.idea/
+.cache/
+.nyc_output/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+`;
 export const rootTsconfigTemplate = `{
   "compilerOptions": {
     "target": "ES2020",

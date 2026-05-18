@@ -292,6 +292,86 @@ describe("cli", () => {
     });
   });
 
+  it("installs dependencies inside a sculptor app and supports the i alias", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    const calls: Array<{ command: string; args: string[] }> = [];
+    const spawn = vi.fn((command: string, args: string[]) => {
+      calls.push({ command, args });
+      return { status: 0 } as const;
+    });
+
+    await runCli(["node", "sc", "install", "deps"], {
+      cwd: projectRoot,
+      spawn: spawn as never,
+      log: () => undefined
+    });
+
+    await runCli(["node", "sc", "i", "deps"], {
+      cwd: projectRoot,
+      spawn: spawn as never,
+      log: () => undefined
+    });
+
+    expect(calls).toEqual([
+      { command: "npm", args: ["i"] },
+      { command: "npm", args: ["i", "@sculptor/core@latest", "@sculptor/paws@latest"] },
+      {
+        command: "npm",
+        args: ["i", "-D", "@sculptor/cli@latest", "@sculptor/config@latest", "@sculptor/router@latest"]
+      },
+      { command: "npm", args: ["i"] },
+      { command: "npm", args: ["i", "@sculptor/core@latest", "@sculptor/paws@latest"] },
+      {
+        command: "npm",
+        args: ["i", "-D", "@sculptor/cli@latest", "@sculptor/config@latest", "@sculptor/router@latest"]
+      }
+    ]);
+  });
+
+  it("updates global sculptor packages outside an app root", async () => {
+    const cwd = makeTempDir();
+    const calls: Array<{ command: string; args: string[] }> = [];
+    const spawn = vi.fn((command: string, args: string[]) => {
+      calls.push({ command, args });
+      return { status: 0 } as const;
+    });
+
+    await runCli(["node", "sc", "update"], {
+      cwd,
+      spawn: spawn as never,
+      log: () => undefined
+    });
+
+    expect(calls).toEqual([
+      {
+        command: "npm",
+        args: [
+          "install",
+          "-g",
+          "@sculptor/cli@latest",
+          "@sculptor/config@latest",
+          "@sculptor/core@latest",
+          "@sculptor/paws@latest",
+          "@sculptor/router@latest",
+          "@sculptor/template-registry@latest"
+        ]
+      }
+    ]);
+  });
+
+  it("rejects update inside a sculptor app root", async () => {
+    const { projectRoot } = await scaffoldFixture();
+
+    await expect(
+      runCli(["node", "sc", "update"], {
+        cwd: projectRoot,
+        spawn: vi.fn(() => ({ status: 0 })) as never,
+        log: () => undefined,
+        error: () => undefined
+      })
+    ).rejects.toThrow("sc update can only be run outside a Sculptor app root.");
+  });
+
   it("generates controller, module, middleware, type, and route artifacts independently", async () => {
     const { projectRoot } = await scaffoldFixture();
     const cwd = projectRoot;

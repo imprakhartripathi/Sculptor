@@ -14,6 +14,9 @@ export interface PluginModule {
     templates?: string[];
     generators?: string[];
 }
+export declare class PluginLoadError extends Error {
+    name: string;
+}
 export declare class PluginRegistry {
     private readonly plugins;
     register(manifest: PluginManifest): void;

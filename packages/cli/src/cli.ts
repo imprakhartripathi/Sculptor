@@ -12,6 +12,7 @@ import {
   listConfigEntries,
   setConfigValue
 } from "./config-commands.js";
+import { detectPackageManager, globalInstallArgsFor } from "./package-manager.js";
 import {
   controllerHelp,
   generateHelp,
@@ -39,6 +40,9 @@ type Command =
   | "build"
   | "lint"
   | "test"
+  | "install"
+  | "i"
+  | "update"
   | "generate"
   | "g"
   | "help"
@@ -59,7 +63,22 @@ export interface CliOptions {
 }
 
 const isCommand = (value: string): value is Command =>
-  ["new", "start", "dev", "build", "lint", "test", "generate", "g", "help", "config", "add"].includes(value);
+  [
+    "new",
+    "start",
+    "dev",
+    "build",
+    "lint",
+    "test",
+    "install",
+    "i",
+    "update",
+    "generate",
+    "g",
+    "help",
+    "config",
+    "add"
+  ].includes(value);
 
 const isFlag = (value: string): boolean => value.startsWith("-");
 
@@ -136,6 +155,33 @@ const requireAppRoot = (cwd: string, command: string): string => {
 
   if (!fs.existsSync(sculptorConfig)) {
     throw new Error(`${command} can only be run from a Sculptor app root.`);
+  }
+
+  return cwd;
+};
+
+const findAppRoot = (cwd: string): string | undefined => {
+  let current = path.resolve(cwd);
+
+  for (;;) {
+    if (fs.existsSync(path.join(current, "sculptor.json"))) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+
+    current = parent;
+  }
+};
+
+const requireOutsideAppRoot = (cwd: string, command: string): string => {
+  const appRoot = findAppRoot(cwd);
+
+  if (appRoot) {
+    throw new Error(`${command} can only be run outside a Sculptor app root.`);
   }
 
   return cwd;
@@ -285,6 +331,8 @@ sc <command> [options]
 - \`sc build\`
 - \`sc lint\`
 - \`sc test\`
+- \`sc install deps\`
+- \`sc update\`
 - \`sc generate\` or \`sc g\`
 - \`sc config <get|set|list>\`
 - \`sc add <plugin>\`
@@ -347,6 +395,16 @@ const printHelp = (topic: string | undefined, log: (...args: unknown[]) => void)
 
   if (topic === "config") {
     log(`# Config\n\nUse \`sc config get\`, \`sc config set\`, or \`sc config list\`.`);
+    return;
+  }
+
+  if (topic === "install") {
+    log(`# Install\n\nUsage: \`sc install deps\` or \`sc i deps\``);
+    return;
+  }
+
+  if (topic === "update") {
+    log(`# Update\n\nUsage: \`sc update\`\n\nUpdates the globally installed Sculptor packages to their latest versions.`);
     return;
   }
 
@@ -462,6 +520,52 @@ const runSpawn = (
   }
 };
 
+const installScaffoldDependencies = (
+  cwd: string,
+  spawn: typeof spawnSync,
+  log: (...args: unknown[]) => void
+): void => {
+  runSpawn("npm", ["i"], cwd, spawn, log);
+  runSpawn(
+    "npm",
+    ["i", "@sculptor/core@latest", "@sculptor/paws@latest"],
+    cwd,
+    spawn,
+    log
+  );
+  runSpawn(
+    "npm",
+    ["i", "-D", "@sculptor/cli@latest", "@sculptor/config@latest", "@sculptor/router@latest"],
+    cwd,
+    spawn,
+    log
+  );
+};
+
+const updateGlobalSculptorPackages = (
+  cwd: string,
+  spawn: typeof spawnSync,
+  log: (...args: unknown[]) => void
+): void => {
+  const packageManager = detectPackageManager();
+  const packages = [
+    "@sculptor/cli@latest",
+    "@sculptor/config@latest",
+    "@sculptor/core@latest",
+    "@sculptor/paws@latest",
+    "@sculptor/router@latest",
+    "@sculptor/template-registry@latest"
+  ];
+
+  runSpawn(
+    packageManager,
+    globalInstallArgsFor(packageManager, packages),
+    cwd,
+    spawn,
+    log
+  );
+};
+
 const handleNew = async (
   args: string[],
   cwd: string,
@@ -473,23 +577,66 @@ const handleNew = async (
   const metadata = await resolveProjectMetadata(args, cwd, prompt);
   const targetDir = path.join(cwd, metadata.appName);
 
-  scaffoldProject(metadata, targetDir);
-  runSpawn("npm", ["i"], targetDir, spawn, log);
-  runSpawn(
-    "npm",
-    ["i", "@sculptor/core@latest", "@sculptor/paws@latest"],
-    targetDir,
+  const scaffolded = await scaffoldProject(metadata, targetDir, {
+    cwd,
+    prompt,
     spawn,
-    log
-  );
-  runSpawn(
-    "npm",
-    ["i", "-D", "@sculptor/cli@latest", "@sculptor/config@latest", "@sculptor/router@latest"],
-    targetDir,
-    spawn,
-    log
-  );
+    log,
+    error: () => undefined
+  });
+
+  if (!scaffolded) {
+    return;
+  }
+  installScaffoldDependencies(targetDir, spawn, log);
   log(`Created SculptorTS project at ${targetDir}`);
+};
+
+const handleInstall = (
+  args: string[],
+  cwd: string,
+  spawn: typeof spawnSync,
+  log: (...args: unknown[]) => void,
+  error: (...args: unknown[]) => void
+): void => {
+  const [subcommand] = args;
+
+  if (!subcommand || subcommand === "help") {
+    log(`Usage: sc install deps`);
+    return;
+  }
+
+  if (subcommand !== "deps") {
+    error(`Unknown install subcommand "${subcommand}".`);
+    process.exit(1);
+  }
+
+  const appRoot = findAppRoot(cwd);
+
+  if (!appRoot) {
+    throw new Error("sc install deps can only be run from a Sculptor app root.");
+  }
+
+  installScaffoldDependencies(appRoot, spawn, log);
+  log(`Installed Sculptor dependencies at ${appRoot}`);
+};
+
+const handleUpdate = (
+  cwd: string,
+  spawn: typeof spawnSync,
+  log: (...args: unknown[]) => void,
+  error: (...args: unknown[]) => void
+): void => {
+  requireOutsideAppRoot(cwd, "sc update");
+
+  try {
+    updateGlobalSculptorPackages(cwd, spawn, log);
+    log("Updated globally installed Sculptor packages.");
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    error(message);
+    process.exit(1);
+  }
 };
 
 const handleDev = (
@@ -658,10 +805,11 @@ const handleAdd = async (
   log(`Loaded plugin ${manifest.name} for ${appRoot}`);
 };
 
-const handleGenerate = (
+const handleGenerate = async (
   args: string[],
   cwd: string,
   prompt: PromptFn,
+  spawn: typeof spawnSync,
   log: (...args: unknown[]) => void,
   error: (...args: unknown[]) => void
 ): Promise<void> => {
@@ -736,7 +884,7 @@ const handleGenerate = (
       const parts = outputDir.split(/[\\/]/).filter(Boolean);
       return parts[parts.length - 1] ?? "index";
     })();
-  const files = generateResourceFiles(
+  const files = await generateResourceFiles(
     kind,
     resolvedName,
     mode,
@@ -744,16 +892,21 @@ const handleGenerate = (
     outputDir,
     typeVariant,
     functionalRoutes,
-    resolveTestingGenerate(appRoot)
+    resolveTestingGenerate(appRoot),
+    { cwd, prompt, spawn, log, error }
   );
   const targetDir = appRoot;
 
-  writeGeneratedFiles(targetDir, files);
+  if (!files) {
+    return;
+  }
+
+  await writeGeneratedFiles(targetDir, files, { cwd, prompt, spawn, log, error });
   if (resolveTestingGenerate(appRoot)) {
-    syncTestHarness(targetDir);
+    await syncTestHarness(targetDir, { cwd, prompt, spawn, log, error });
   }
   log(`Generated ${kind} "${resolvedName}" using ${mode} mode.`);
-  return Promise.resolve();
+  return;
 };
 
 export const runCli = async (
@@ -808,6 +961,13 @@ export const runCli = async (
     case "test":
       handleTest(cwd, spawn, log);
       return;
+    case "install":
+    case "i":
+      handleInstall(args, cwd, spawn, log, error);
+      return;
+    case "update":
+      handleUpdate(cwd, spawn, log, error);
+      return;
     case "config":
       handleConfig(args, cwd, log, error);
       return;
@@ -816,7 +976,7 @@ export const runCli = async (
       return;
     case "generate":
     case "g":
-      await handleGenerate(args, cwd, prompt, log, error);
+      await handleGenerate(args, cwd, prompt, spawn, log, error);
       return;
   }
 };

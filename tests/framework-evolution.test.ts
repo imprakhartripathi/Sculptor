@@ -11,7 +11,8 @@ import { ConfigInterpolationError, loadConfig, redactConfig } from "../packages/
 import { Controller, createRouter, Get } from "../packages/router/src/index.js";
 import { RouteCollisionError } from "../packages/router/src/errors.js";
 import { runCli } from "../packages/cli/src/cli.js";
-import { loadPluginModule } from "../packages/cli/src/plugins.js";
+import { loadPluginModule, PluginLoadError } from "../packages/cli/src/plugins.js";
+import { loadScaffoldTemplateRegistry } from "../packages/cli/src/scaffold.js";
 import { renderTemplate } from "../packages/cli/src/template-engine.js";
 
 const tmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), "sculptor-evo-"));
@@ -171,6 +172,84 @@ describe("plugins", () => {
     const module = await loadPluginModule(pathToFileURL(pluginFile).href);
 
     expect(module.manifest?.name).toBe("demo");
+  });
+
+  it("surfaces a friendly error when a plugin is missing", async () => {
+    await expect(loadPluginModule("@sculptor/__missing_plugin__")).rejects.toBeInstanceOf(
+      PluginLoadError
+    );
+  });
+});
+
+describe("template registry recovery", () => {
+  it("installs and retries when the template registry is missing", async () => {
+    const rootDir = tmpDir();
+    const spawnCalls: Array<{ command: string; args: string[] }> = [];
+    const prompt = vi.fn().mockResolvedValue("y");
+    const importer = vi
+      .fn()
+      .mockRejectedValueOnce(Object.assign(new Error("Cannot find package '@sculptor/template-registry'"), {
+        code: "ERR_MODULE_NOT_FOUND"
+      }))
+      .mockResolvedValueOnce({
+        scaffoldProject: vi.fn(),
+        generateResourceFiles: vi.fn(),
+        writeGeneratedFiles: vi.fn(),
+        syncTestHarness: vi.fn(),
+        controllerHelp: "",
+        generateHelp: ""
+      });
+
+    const module = await loadScaffoldTemplateRegistry(
+      {
+        cwd: rootDir,
+        prompt,
+        spawn: vi.fn((command: string, args: string[]) => {
+          spawnCalls.push({ command, args });
+          return { status: 0 } as const;
+        }) as never,
+        log: () => undefined,
+        error: () => undefined
+      },
+      importer
+    );
+
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(spawnCalls).toEqual([
+      {
+        command: "npm",
+        args: ["install", "-g", "@sculptor/template-registry"]
+      }
+    ]);
+    expect(module).not.toBeNull();
+    expect(importer).toHaveBeenCalledTimes(2);
+  });
+
+  it("exits cleanly when the user declines installation", async () => {
+    const rootDir = tmpDir();
+    const originalExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const prompt = vi.fn().mockResolvedValue("n");
+    const importer = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error("Cannot find package '@sculptor/template-registry'"), {
+        code: "ERR_MODULE_NOT_FOUND"
+      }));
+
+    const module = await loadScaffoldTemplateRegistry(
+      {
+        cwd: rootDir,
+        prompt,
+        spawn: vi.fn(() => ({ status: 0 })) as never,
+        log: () => undefined,
+        error: () => undefined
+      },
+      importer
+    );
+
+    expect(module).toBeNull();
+    expect(process.exitCode).toBe(1);
+    process.exitCode = originalExitCode;
   });
 });
 

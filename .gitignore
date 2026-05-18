@@ -1,2 +1,17 @@
 node_modules/
+dist/
+coverage/
+.env
+.env.*
+.DS_Store
+.vscode/
+.idea/
+.cache/
+.nyc_output/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
 .codex
