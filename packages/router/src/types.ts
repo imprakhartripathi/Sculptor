@@ -14,6 +14,12 @@ export type Res = Response;
 export type Nxt = NextFunction;
 export type Err = ErrorRequestHandler;
 export type FunctionalHandler = (req: Req, res: Res, next: Nxt) => unknown;
+export type RouterErrorHandler<TError = unknown> = (
+  error: TError,
+  req: Req,
+  res: Res,
+  next: Nxt
+) => unknown;
 
 export interface MethodRouteMetadata {
   method: HttpMethod;
@@ -43,38 +49,40 @@ export interface CreateRouterOptions {
   prefix?: string;
 }
 
-export interface FunctionalRouterLike {
-  at(path: string): FunctionalRouterLike;
+export interface FunctionalRouterScope {
+  at(path: string): FunctionalRouterScope;
   delete(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): FunctionalRouterLike;
+  ): FunctionalRouterScope;
   get(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): FunctionalRouterLike;
+  ): FunctionalRouterScope;
   patch(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): FunctionalRouterLike;
+  ): FunctionalRouterScope;
   post(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): FunctionalRouterLike;
+  ): FunctionalRouterScope;
   put(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): FunctionalRouterLike;
+  ): FunctionalRouterScope;
   toRouter(): Router;
-  use(...middlewares: Array<RequestHandler | ErrorRequestHandler>): FunctionalRouterLike;
-  use(
+  use<TError = unknown>(
+    ...middlewares: Array<RequestHandler | RouterErrorHandler<TError>>
+  ): FunctionalRouterScope;
+  use<TError = unknown>(
     path: string,
-    ...middlewares: Array<RequestHandler | ErrorRequestHandler>
-  ): FunctionalRouterLike;
+    ...middlewares: Array<RequestHandler | RouterErrorHandler<TError>>
+  ): FunctionalRouterScope;
 }
 
-export type FunctionalRouterScope = FunctionalRouterLike;
-export type RouterSource = Router | FunctionalRouterLike;
+export type FunctionalRouterLike = FunctionalRouterScope;
+export type RouterSource = Router | FunctionalRouterScope;
 
 export interface RouteRegistrationSource {
   label: string;

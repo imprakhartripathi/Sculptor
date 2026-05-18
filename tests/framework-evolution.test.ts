@@ -6,12 +6,8 @@ import { pathToFileURL } from "node:url";
 import express from "express";
 import { describe, expect, it, vi } from "vitest";
 
-import { bootstrapApp } from "../packages/core/src/index.js";
-import {
-  ConfigInterpolationError,
-  loadConfig,
-  redactConfig
-} from "../packages/config/src/index.js";
+import { bootstrapApp, HttpError, normalizeError, SculptorError } from "../packages/core/src/index.js";
+import { ConfigInterpolationError, loadConfig, redactConfig } from "../packages/config/src/index.js";
 import { Controller, createRouter, Get } from "../packages/router/src/index.js";
 import { RouteCollisionError } from "../packages/router/src/errors.js";
 import { runCli } from "../packages/cli/src/cli.js";
@@ -129,6 +125,23 @@ describe("bootstrap", () => {
     expect(result.listen).toBe(false);
     expect(result.server).toBeUndefined();
     expect(result.app).toBeDefined();
+  });
+});
+
+describe("framework errors", () => {
+  it("normalizes thrown values into SculptorError instances", () => {
+    const normalized = normalizeError("boom");
+
+    expect(normalized).toBeInstanceOf(SculptorError);
+    expect(normalized.message).toBe("boom");
+    expect(normalized.code).toBe("RUNTIME_ERROR");
+    expect(normalized.status).toBe(500);
+  });
+
+  it("preserves typed framework errors", () => {
+    const error = new HttpError(404, "Not found");
+
+    expect(normalizeError(error)).toBe(error);
   });
 });
 

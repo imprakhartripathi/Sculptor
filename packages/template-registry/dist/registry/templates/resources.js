@@ -94,7 +94,8 @@ ${toCamelCase(name)}.get(${toCamelCase(name)}Handler);
 ${toCamelCase(name)}.at("/verify").get(${toCamelCase(name)}Handler);
 ${toCamelCase(name)}.use(${toCamelCase(name)}ErrorHandler);
 `,
-        [`${normalizedHandlerDir}/${routeHandlerFileName(name)}`]: `import type { Err, Nxt, Req, Res } from "@sculptor/core";
+        [`${normalizedHandlerDir}/${routeHandlerFileName(name)}`]: `import { normalizeError } from "@sculptor/core";
+import type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError } from "@sculptor/core";
 
 export const ${toCamelCase(name)}Handler = async (
   req: Req,
@@ -106,13 +107,13 @@ export const ${toCamelCase(name)}Handler = async (
       resource: "${name}",
       path: req.path
     });
-  } catch (error: unknown) {
-    next(error);
+  } catch (error) {
+    next(normalizeError(error));
   }
 };
 
-export const ${toCamelCase(name)}ErrorHandler: Err = (
-  error: unknown,
+export const ${toCamelCase(name)}ErrorHandler: FrameworkErrorHandler = (
+  error: SculptorError,
   _req: Req,
   res: Res,
   next: Nxt
@@ -123,7 +124,9 @@ export const ${toCamelCase(name)}ErrorHandler: Err = (
   }
 
   res.status(500).json({
-    message: error instanceof Error ? error.message : "Internal Server Error"
+    message: error.message,
+    code: error.code,
+    status: error.status
   });
 };
 `

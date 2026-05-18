@@ -36,7 +36,7 @@ const createRouteHandler = (method, routePath, handler) => {
             .catch(next);
     };
 };
-class FunctionalRouterScope {
+class FunctionalRouterImpl {
     constructor(prefix = "", sourceLabel, router = express.Router()) {
         this.prefix = prefix;
         this.sourceLabel = sourceLabel ?? `FunctionalRouter(${JSON.stringify(prefix || "/")})`;
@@ -67,7 +67,7 @@ class FunctionalRouterScope {
         return this;
     }
     at(path) {
-        return new FunctionalRouterScope(joinPaths(this.prefix, path), this.sourceLabel, this.router);
+        return new FunctionalRouterImpl(joinPaths(this.prefix, path), this.sourceLabel, this.router);
     }
     get(pathOrHandler, ...handlers) {
         return this.register("get", pathOrHandler, handlers);
@@ -88,5 +88,5 @@ class FunctionalRouterScope {
         return this.router;
     }
 }
-export const FunctionalRouter = (prefix = "") => new FunctionalRouterScope(prefix);
+export const FunctionalRouter = (prefix = "") => new FunctionalRouterImpl(prefix);
 //# sourceMappingURL=functional-router.js.map

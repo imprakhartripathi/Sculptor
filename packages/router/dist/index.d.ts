@@ -5,4 +5,4 @@ export { registerRouterSource } from "./collisions.js";
 export { FunctionalRouter } from "./functional-router.js";
 export { createRouter } from "./router.js";
 export { RouteCollisionError } from "./errors.js";
-export type { Err, ControllerClass, ControllerMetadata, CreateRouterOptions, HttpMethod, Nxt, MethodRouteMetadata, ParameterResolverContext, Req, Res, RouteDefinition, RouteRegistrationSource, RouterSource, FunctionalRouterLike } from "./types.js";
+export type { Err, ControllerClass, ControllerMetadata, CreateRouterOptions, HttpMethod, Nxt, MethodRouteMetadata, ParameterResolverContext, Req, Res, RouteDefinition, RouteRegistrationSource, RouterSource, FunctionalRouterScope, RouterErrorHandler, FunctionalRouterLike } from "./types.js";

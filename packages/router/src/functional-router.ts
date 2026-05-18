@@ -2,9 +2,13 @@ import express from "express";
 import type { ErrorRequestHandler, RequestHandler } from "express";
 
 import { registerRouterSource } from "./collisions.js";
-import type { FunctionalRouterLike, HttpMethod, Req, Res, Nxt, RouterSource } from "./types.js";
-
-type FunctionalHandler = (req: Req, res: Res, next: Nxt) => unknown;
+import type {
+  FunctionalHandler,
+  FunctionalRouterScope,
+  HttpMethod,
+  RouterErrorHandler,
+  RouterSource
+} from "./types.js";
 
 const normalizePathSegment = (segment: string): string => {
   if (!segment) {
@@ -54,7 +58,7 @@ const createRouteHandler = (
   };
 };
 
-class FunctionalRouterScope implements FunctionalRouterLike {
+class FunctionalRouterImpl implements FunctionalRouterScope {
   private readonly router: express.Router;
   private readonly prefix: string;
   private readonly sourceLabel: string;
@@ -74,7 +78,7 @@ class FunctionalRouterScope implements FunctionalRouterLike {
     method: HttpMethod,
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     handlers: Array<RequestHandler | FunctionalHandler>
-  ): this {
+  ): FunctionalRouterScope {
     const localPath =
       typeof pathOrHandler === "string" ? pathOrHandler : "/";
     const routeHandlers =
@@ -102,23 +106,34 @@ class FunctionalRouterScope implements FunctionalRouterLike {
     return this;
   }
 
-  use(...middlewares: Array<RequestHandler | ErrorRequestHandler>): this;
-  use(path: string, ...middlewares: Array<RequestHandler | ErrorRequestHandler>): this;
+  use<TError = unknown>(
+    ...middlewares: Array<RequestHandler | RouterErrorHandler<TError>>
+  ): FunctionalRouterScope;
+  use<TError = unknown>(
+    path: string,
+    ...middlewares: Array<RequestHandler | RouterErrorHandler<TError>>
+  ): FunctionalRouterScope;
   use(
-    pathOrMiddleware: string | RequestHandler | ErrorRequestHandler,
-    ...middlewares: Array<RequestHandler | ErrorRequestHandler>
-  ): this {
+    pathOrMiddleware: string | RequestHandler | RouterErrorHandler,
+    ...middlewares: Array<RequestHandler | RouterErrorHandler>
+  ): FunctionalRouterScope {
     if (typeof pathOrMiddleware !== "string") {
-      this.router.use(pathOrMiddleware, ...middlewares);
+      this.router.use(
+        pathOrMiddleware as ErrorRequestHandler,
+        ...(middlewares as Array<RequestHandler | ErrorRequestHandler>)
+      );
       return this;
     }
 
-    this.router.use(joinPaths(this.prefix, pathOrMiddleware), ...middlewares);
+    this.router.use(
+      joinPaths(this.prefix, pathOrMiddleware),
+      ...(middlewares as Array<RequestHandler | ErrorRequestHandler>)
+    );
     return this;
   }
 
   at(path: string): FunctionalRouterScope {
-    return new FunctionalRouterScope(
+    return new FunctionalRouterImpl(
       joinPaths(this.prefix, path),
       this.sourceLabel,
       this.router
@@ -128,35 +143,35 @@ class FunctionalRouterScope implements FunctionalRouterLike {
   get(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): this {
+  ): FunctionalRouterScope {
     return this.register("get", pathOrHandler, handlers);
   }
 
   post(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): this {
+  ): FunctionalRouterScope {
     return this.register("post", pathOrHandler, handlers);
   }
 
   put(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): this {
+  ): FunctionalRouterScope {
     return this.register("put", pathOrHandler, handlers);
   }
 
   patch(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): this {
+  ): FunctionalRouterScope {
     return this.register("patch", pathOrHandler, handlers);
   }
 
   delete(
     pathOrHandler: string | RequestHandler | FunctionalHandler,
     ...handlers: Array<RequestHandler | FunctionalHandler>
-  ): this {
+  ): FunctionalRouterScope {
     return this.register("delete", pathOrHandler, handlers);
   }
 
@@ -166,4 +181,4 @@ class FunctionalRouterScope implements FunctionalRouterLike {
 }
 
 export const FunctionalRouter = (prefix = ""): FunctionalRouterScope =>
-  new FunctionalRouterScope(prefix);
+  new FunctionalRouterImpl(prefix);

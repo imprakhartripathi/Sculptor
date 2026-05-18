@@ -262,7 +262,8 @@ export class HealthController {
   }
 }
 `;
-export const healthRouteHandlerTemplate = `import type { Err, Nxt, Req, Res } from "@sculptor/core";
+export const healthRouteHandlerTemplate = `import { normalizeError } from "@sculptor/core";
+import type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError } from "@sculptor/core";
 
 export const healthHandler = async (
   req: Req,
@@ -276,13 +277,13 @@ export const healthHandler = async (
     }
 
     res.json({ status: "ok" });
-  } catch (error: unknown) {
-    next(error);
+  } catch (error) {
+    next(normalizeError(error));
   }
 };
 
-export const healthErrorHandler: Err = (
-  error: unknown,
+export const healthErrorHandler: FrameworkErrorHandler = (
+  error: SculptorError,
   _req: Req,
   res: Res,
   next: Nxt
@@ -293,7 +294,9 @@ export const healthErrorHandler: Err = (
   }
 
   res.status(500).json({
-    message: error instanceof Error ? error.message : "Internal Server Error"
+    message: error.message,
+    code: error.code,
+    status: error.status
   });
 };
 `;

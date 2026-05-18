@@ -5,8 +5,10 @@ import type {
   Nxt as RouterNxt,
   Req as RouterReq,
   Res as RouterRes,
-  RouterSource
+  RouterSource,
+  RouterErrorHandler
 } from "@sculptor/router";
+import type { SculptorError } from "./errors.js";
 
 export interface RegistryShape {
   controllers: ControllerClass[];
@@ -44,12 +46,19 @@ export interface FrameworkErrorContext {
   context?: RequestContext;
 }
 
+export type FrameworkErrorHandler = RouterErrorHandler<SculptorError>;
+
+export type FrameworkErrorHook = (
+  error: SculptorError,
+  context: FrameworkErrorContext
+) => void | Promise<void>;
+
 export interface BootstrapAppOptions {
   registry: RegistryShape;
   rootDir?: string;
   port?: number;
   listen?: boolean;
-  onError?: (error: unknown, context: FrameworkErrorContext) => void | Promise<void>;
+  onError?: FrameworkErrorHook;
 }
 
 export interface BootstrapAppResult {

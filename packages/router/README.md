@@ -154,8 +154,8 @@ The package exports the core router types used by the framework:
 - `Req`
 - `Res`
 - `RouteDefinition`
-- `FunctionalRouterScope` as the preferred explicit type name
-- `FunctionalRouterLike` for advanced typing and compatibility
+- `FunctionalRouterScope` as the public scoped-router type
+- `FunctionalRouterLike` as a compatibility alias
 - `RouterSource`
 
 ## Package Scripts

@@ -19,5 +19,7 @@ export type {
   RouteDefinition,
   RouteRegistrationSource,
   RouterSource,
+  FunctionalRouterScope,
+  RouterErrorHandler,
   FunctionalRouterLike
 } from "./types.js";
