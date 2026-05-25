@@ -1,0 +1,44 @@
+name: Documentation issue
+description: Report a docs bug or suggest a docs improvement
+labels:
+  - documentation
+body:
+  - type: dropdown
+    id: documentation_area
+    attributes:
+      label: Documentation area
+      description: Which document needs attention?
+      options:
+        - readme.md
+        - CHANGELOG.md
+        - packages/cli/README.md
+        - packages/core/README.md
+        - packages/config/README.md
+        - packages/router/README.md
+        - packages/paws/README.md
+        - packages/template-registry/README.md
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: problem_description
+    attributes:
+      label: Problem description
+      description: What is wrong, missing, or unclear?
+      placeholder: The current example does not match the CLI output.
+    validations:
+      required: true
+  - type: textarea
+    id: suggested_improvement
+    attributes:
+      label: Suggested improvement
+      description: What should the docs say instead?
+      placeholder: Update the example to use the current `sc g` syntax.
+    validations:
+      required: true
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add links, screenshots, or notes if helpful.
+      placeholder: Extra context here.

@@ -1,0 +1,82 @@
+name: Bug report
+description: Report a problem in SculptorTS
+labels:
+  - bug
+body:
+  - type: input
+    id: sculptor_version
+    attributes:
+      label: Sculptor version
+      description: Version of the framework or CLI you are using.
+      placeholder: "0.2.4"
+    validations:
+      required: true
+  - type: input
+    id: node_version
+    attributes:
+      label: Node version
+      description: Output of `node --version`.
+      placeholder: "v22.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: package_affected
+    attributes:
+      label: Package affected
+      description: Which part of SculptorTS is involved?
+      options:
+        - app
+        - @sculptor/cli
+        - @sculptor/config
+        - @sculptor/core
+        - @sculptor/paws
+        - @sculptor/router
+        - @sculptor/template-registry
+        - multiple packages
+        - not sure
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Reproduction steps
+      description: List the exact steps needed to reproduce the issue.
+      placeholder: |
+        1. Run `sc dev`
+        2. Open `GET /health`
+        3. Observe the error
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+      placeholder: The route should return a 200 response.
+    validations:
+      required: true
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+      placeholder: The process throws a route collision error.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, app mode, command used, and anything else relevant.
+      placeholder: |
+        OS: macOS 14
+        Command: `sc dev`
+        App style: hybrid
+    validations:
+      required: true
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add logs, screenshots, stack traces, or related notes.
+      placeholder: Paste any extra context here.

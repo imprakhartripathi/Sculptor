@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest an improvement for SculptorTS
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve?
+      placeholder: The current CLI does not make it easy to...
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you want.
+      placeholder: Add a new `sc ...` command that...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives_considered
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider?
+      placeholder: I also considered changing the config format, but...
+    validations:
+      required: true
+  - type: textarea
+    id: example_usage
+    attributes:
+      label: Example usage
+      description: Show the API or command flow if it helps.
+      placeholder: |
+        sc g c user --functional
+    validations:
+      required: false
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add any other notes, screenshots, or references.
+      placeholder: Extra context here.
