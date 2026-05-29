@@ -11,7 +11,7 @@ const normalizePrefix = (prefix) => {
     return withLeadingSlash.replace(/\/+$/, "") || "/";
 };
 const instantiateController = (controllerClass) => new controllerClass();
-export const createRouter = ({ controllers = [], routes = [], prefix }) => {
+export const createRouter = ({ controllers = [], routes = [], prefix, controllerFactory }) => {
     const scannedControllers = controllers.map((controllerClass) => scanController(controllerClass));
     const normalizedPrefix = normalizePrefix(prefix);
     detectRouteCollisions(scannedControllers, routes, normalizedPrefix ?? "");
@@ -21,7 +21,9 @@ export const createRouter = ({ controllers = [], routes = [], prefix }) => {
         if (!metadata) {
             continue;
         }
-        const instance = instantiateController(controllerClass);
+        const instance = controllerFactory
+            ? controllerFactory(controllerClass)
+            : instantiateController(controllerClass);
         registerControllerRoutes(coreRouter, metadata, instance);
     }
     for (const routeRouter of routes) {

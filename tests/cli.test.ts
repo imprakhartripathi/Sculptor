@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { runCli } from "../packages/cli/src/cli.js";
+import { getPackageFlagValue, stripPackageFlag } from "../packages/cli/src/package-commands.js";
 
 const repoRoot = process.cwd();
 const cliVersion = JSON.parse(
@@ -147,8 +148,13 @@ describe("cli", () => {
     expect(sculptor.project?.devServer).toBe("tsx");
     expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
     expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.route.spec.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(projectRoot, "src/app/handlers/health.route.handler.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/tests/health.controller.spec.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/index.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.controller.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.service.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.repository.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.dto.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.types.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.spec.ts"))).toBe(true);
@@ -212,7 +218,8 @@ describe("cli", () => {
     expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
     expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/health.route.spec.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(projectRoot, "src/app/handlers/health.route.handler.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.route.handler.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.route.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/runner.spec.ts"))).toBe(true);
@@ -328,7 +335,7 @@ describe("cli", () => {
     ]);
   });
 
-  it("updates global sculptor packages outside an app root", async () => {
+  it("updates only the global sculptor cli outside an app root", async () => {
     const cwd = makeTempDir();
     const calls: Array<{ command: string; args: string[] }> = [];
     const spawn = vi.fn((command: string, args: string[]) => {
@@ -345,18 +352,267 @@ describe("cli", () => {
     expect(calls).toEqual([
       {
         command: "npm",
-        args: [
-          "install",
-          "-g",
-          "@sculptor/cli@latest",
-          "@sculptor/config@latest",
-          "@sculptor/core@latest",
-          "@sculptor/paws@latest",
-          "@sculptor/router@latest",
-          "@sculptor/template-registry@latest"
-        ]
+        args: ["install", "-g", "@sculptor/cli@latest"]
       }
     ]);
+  });
+
+  it("generates exact package names and preserves manual code outside generated markers", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    const cwd = projectRoot;
+    const logs: string[] = [];
+
+    await runCli(["node", "sc", "g", "pkg", "user"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const packageIndex = path.join(cwd, "src", "user", "index.ts");
+    const registryFile = path.join(cwd, "sculptor.packages.json");
+
+    expect(fs.existsSync(packageIndex)).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src", "users", "index.ts"))).toBe(false);
+    expect(fs.readFileSync(packageIndex, "utf8")).toContain('name: "user"');
+    expect(fs.readFileSync(packageIndex, "utf8")).toContain("[sculptor:imports:start]");
+    expect(fs.readFileSync(registryFile, "utf8")).toContain('"user"');
+
+    fs.appendFileSync(
+      packageIndex,
+      "\n// manual note\nexport const preserved = true;\n"
+    );
+
+    await runCli(["node", "sc", "reg", "src/user/user.service.ts"], {
+      cwd,
+      log: () => undefined,
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const updatedIndex = fs.readFileSync(packageIndex, "utf8");
+    expect(updatedIndex).toContain("// manual note");
+    expect(updatedIndex).toContain('name: "user"');
+
+    const treeLogs: string[] = [];
+    await runCli(["node", "sc", "ls", "-t", "-p=user"], {
+      cwd,
+      log: (value) => treeLogs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const treeOutput = treeLogs.join("\n");
+    expect(treeOutput).toContain("user (src/user)");
+    expect(treeOutput).not.toContain("users (src/users)");
+
+    const pkgLogs: string[] = [];
+    await runCli(["node", "sc", "pkg", "user"], {
+      cwd,
+      log: (value) => pkgLogs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const pkgOutput = pkgLogs.join("\n");
+    expect(pkgOutput).toContain("Package: user");
+    expect(pkgOutput).not.toContain("users");
+  });
+
+  it("supports package command and flag aliases", async () => {
+    expect(getPackageFlagValue(["-p=user"])).toBe("user");
+    expect(getPackageFlagValue(["--p=user"])).toBe("user");
+    expect(getPackageFlagValue(["-pkg=user"])).toBe("user");
+    expect(getPackageFlagValue(["--pkg=user"])).toBe("user");
+    expect(getPackageFlagValue(["-package=user"])).toBe("user");
+    expect(getPackageFlagValue(["--package=user"])).toBe("user");
+    expect(getPackageFlagValue(["-p", "user"])).toBe("user");
+    expect(getPackageFlagValue(["--pkg", "user"])).toBe("user");
+    expect(getPackageFlagValue(["--package", "user"])).toBe("user");
+    expect(stripPackageFlag(["profile", "-pkg=user", "in", "src/app"])).toEqual([
+      "profile",
+      "in",
+      "src/app"
+    ]);
+    expect(stripPackageFlag(["profile", "--package", "user", "in", "src/app"])).toEqual([
+      "profile",
+      "in",
+      "src/app"
+    ]);
+
+    const { projectRoot } = await scaffoldFixture();
+    const cwd = projectRoot;
+
+    await runCli(["node", "sc", "g", "pkg", "user"], {
+      cwd,
+      log: () => undefined,
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const logs: string[] = [];
+    await runCli(["node", "sc", "package", "user"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    expect(logs.join("\n")).toContain("Package: user");
+  });
+
+  it("supports register and listing command aliases", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    const cwd = projectRoot;
+
+    await runCli(["node", "sc", "g", "pkg", "user"], {
+      cwd,
+      log: () => undefined,
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const logs: string[] = [];
+
+    await runCli(["node", "sc", "register", "src/user/user.service.ts"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    await runCli(["node", "sc", "list", "-t", "-p=user"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    await runCli(["node", "sc", "r", "src/user/user.service.ts"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    await runCli(["node", "sc", "unreg", "src/user/user.service.ts"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    await runCli(["node", "sc", "unregister", "src/user/user.service.ts"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    await runCli(["node", "sc", "ur", "src/user/user.service.ts"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    await runCli(["node", "sc", "remove", "src/user/user.service.ts"], {
+      cwd,
+      prompt: async () => "y",
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const output = logs.join("\n");
+    expect(output).toContain("Registered src/user/user.service.ts");
+    expect(output).toContain("user (src/user)");
+    expect(output).toContain("Unregistered src/user/user.service.ts");
+    expect(output).toContain("Removed src/user/user.service.ts");
+  });
+
+  it("generates AGENTS.md with package-aware guidance", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    const cwd = projectRoot;
+    const logs: string[] = [];
+
+    await runCli(["node", "sc", "agents"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    await runCli(["node", "sc", "agents", "refresh"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const agentsPath = path.join(cwd, "AGENTS.md");
+    const agents = fs.readFileSync(agentsPath, "utf8");
+
+    expect(fs.existsSync(agentsPath)).toBe(true);
+    expect(agents).toContain("Sculptor CLI");
+    expect(agents).toContain("Package Architecture");
+    expect(agents).toContain("Exact package names");
+    expect(agents).toContain("sc agents refresh");
+    expect(logs.join("\n")).toContain("Wrote AGENTS.md");
+  });
+
+  it("runs doctor diagnostics without mutating the project", async () => {
+    const cwd = makeTempDir();
+    const appRoot = path.join(cwd, "doctor-app");
+    fs.mkdirSync(path.join(appRoot, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(appRoot, "sculptor.json"),
+      JSON.stringify(
+        {
+          framework: {
+            project: {
+              srcRoot: "src"
+            }
+          }
+        },
+        null,
+        2
+      )
+    );
+    fs.writeFileSync(
+      path.join(appRoot, "package.json"),
+      JSON.stringify(
+        {
+          name: "doctor-app",
+          version: "1.0.0",
+          dependencies: {
+            "@sculptor/cli": cliVersion.version
+          }
+        },
+        null,
+        2
+      )
+    );
+    fs.writeFileSync(
+      path.join(appRoot, "src", "registry.ts"),
+      `export const registry = {\n  packages: [],\n  controllers: [],\n  routes: [],\n  services: [],\n  repositories: [],\n  middlewares: []\n};\n`
+    );
+
+    const logs: string[] = [];
+
+    await runCli(["node", "sc", "doctor"], {
+      cwd: appRoot,
+      log: (value) => logs.push(String(value)),
+      error: (value) => logs.push(String(value)),
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const output = logs.join("\n");
+    expect(output).toContain("Sculptor doctor");
+    expect(output).toContain(`CLI version: ${cliVersion.version}`);
+    expect(output).toContain("Package-aware registry shape detected.");
+    expect(output).toContain("@sculptor/cli");
+    expect(output).toContain("matches CLI version");
   });
 
   it("rejects update inside a sculptor app root", async () => {

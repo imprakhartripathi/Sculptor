@@ -5,8 +5,8 @@ export const controllerHelp = `# Controller Generator
 \`\`\`bash
 sc generate controller user
 sc g c user
-\nsc generate controller user in src/app/controllers
-\nsc g c user --functional
+sc generate controller user in src/app/controllers
+sc g c user --functional
 \`\`\`
 
 ## Output
@@ -34,6 +34,36 @@ export const middlewareHelp = `# Middleware Generator
 sc generate middleware auth
 sc g mw auth
 \`\`\`
+`;
+
+export const repositoryHelp = `# Repository Generator
+
+## Usage
+
+\`\`\`bash
+sc generate repository user
+sc g repo user
+\`\`\`
+
+## Output
+
+- \`*.repository.ts\`
+- generates a \`@Repository()\` class
+`;
+
+export const dtoHelp = `# DTO Generator
+
+## Usage
+
+\`\`\`bash
+sc generate dto user
+sc g dto user
+\`\`\`
+
+## Output
+
+- \`*.dto.ts\`
+- generates an explicit DTO class
 `;
 
 export const typeHelp = `# Type Generator
@@ -82,8 +112,12 @@ sc generate controller user
 sc generate service user
 sc generate module user
 sc generate middleware auth
+sc generate repository user
+sc generate dto user
 sc generate type user
 sc generate route user
+sc generate pkg user
+sc generate package user
 \`\`\`
 
 ## Aliases
@@ -93,13 +127,21 @@ sc generate route user
 - \`service\` -> \`s\`
 - \`module\` -> \`m\` / \`mo\`
 - \`middleware\` -> \`mw\`
+- \`repository\` -> \`repo\`
+- \`dto\` -> \`dto\`
 - \`type\` -> \`t\`
 - \`route\` -> \`r\`
+- \`pkg\` -> \`pkg\`
+- \`package\` -> \`package\`
 
 ## Path
 
 - append \`in <path>\` to write into a custom directory
 - default output for types is \`src/app/types\`
+- default output for repositories is \`src/app/repositories\`
+- default output for DTOs is \`src/app/dtos\`
+- package generation uses the configured \`project.srcRoot\` unless \`in\` is provided
+- package names are exact and are not singularized or pluralized automatically
 - controller generators are controller-first by default; pass \`--functional\` only when you want the paired functional route files
 - route generators always emit the paired functional route and handler files
 `;

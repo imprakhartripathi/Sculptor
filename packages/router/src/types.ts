@@ -41,12 +41,13 @@ export interface ControllerMetadata {
   routes: RouteDefinition[];
 }
 
-export type ControllerClass<TInstance = object> = new (...args: never[]) => TInstance;
+export type ControllerClass<TInstance = object> = new (...args: unknown[]) => TInstance;
 
 export interface CreateRouterOptions {
   controllers?: ControllerClass[];
   routes?: RouterSource[];
   prefix?: string;
+  controllerFactory?: <TInstance>(controllerClass: ControllerClass<TInstance>) => TInstance;
 }
 
 export interface FunctionalRouterScope {

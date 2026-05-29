@@ -17,6 +17,7 @@ const toControllerClassName = (fileName: string): string => {
 export const logRegistryState = (rootDir: string, registry: RegistryShape): void => {
   const controllerCount = registry.controllers.length;
   const routeCount = registry.routes.length;
+  const packageRegistryPath = path.join(rootDir, "sculptor.packages.json");
 
   const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
   process.env.SCULPTOR_ROOT_DIR = rootDir;
@@ -24,28 +25,42 @@ export const logRegistryState = (rootDir: string, registry: RegistryShape): void
   try {
     paws.system(`Registered Controllers: ${controllerCount}`);
     paws.system(`Registered Routes: ${routeCount}`);
+    paws.system(`Registered Packages: ${registry.packages?.length ?? 0}`);
 
     const srcRoot = String(getConfig("project.srcRoot", rootDir) ?? "src");
     const controllersDir = path.join(rootDir, srcRoot, "app", "controllers");
 
-    if (!fs.existsSync(controllersDir)) {
-      return;
+    if (fs.existsSync(packageRegistryPath)) {
+      const raw = fs.readFileSync(packageRegistryPath, "utf8");
+      const artifact = raw.trim() ? (JSON.parse(raw) as { packages?: Record<string, { path: string; files?: Array<{ path: string }> }> }) : {};
+
+      for (const [packageName, packageRecord] of Object.entries(artifact.packages ?? {})) {
+        for (const file of packageRecord.files ?? []) {
+          const filePath = path.join(rootDir, file.path);
+          if (!fs.existsSync(filePath)) {
+            paws.warn(`Missing registered file: ${file.path}`);
+          }
+        }
+        paws.system(`Package: ${packageName} -> ${packageRecord.path}`);
+      }
     }
 
     const registeredNames = new Set(
       registry.controllers.map((controller) => controller.name)
     );
 
-    const missingControllers = fs
-      .readdirSync(controllersDir)
-      .filter((file) => /\.controller\.[cm]?[jt]sx?$/.test(file))
-      .map(toControllerClassName)
-      .filter((className) => !registeredNames.has(className));
+    if (fs.existsSync(controllersDir)) {
+      const missingControllers = fs
+        .readdirSync(controllersDir)
+        .filter((file) => /\.controller\.[cm]?[jt]sx?$/.test(file))
+        .map(toControllerClassName)
+        .filter((className) => !registeredNames.has(className));
 
-    if (missingControllers.length > 0) {
-      paws.warn("Unregistered controller detected.");
-      for (const controllerName of missingControllers) {
-        paws.warn(`${controllerName} is not registered. Please add it to registry.ts.`);
+      if (missingControllers.length > 0) {
+        paws.warn("Unregistered controller detected.");
+        for (const controllerName of missingControllers) {
+          paws.warn(`${controllerName} is not registered. Please add it to registry.ts.`);
+        }
       }
     }
   } finally {

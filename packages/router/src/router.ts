@@ -23,7 +23,8 @@ const instantiateController = <TInstance>(
 export const createRouter = ({
   controllers = [],
   routes = [],
-  prefix
+  prefix,
+  controllerFactory
 }: CreateRouterOptions): express.Router => {
   const scannedControllers = controllers.map((controllerClass) => scanController(controllerClass));
   const normalizedPrefix = normalizePrefix(prefix);
@@ -37,7 +38,9 @@ export const createRouter = ({
       continue;
     }
 
-    const instance = instantiateController(controllerClass);
+    const instance = controllerFactory
+      ? controllerFactory(controllerClass)
+      : instantiateController(controllerClass);
     registerControllerRoutes(coreRouter as unknown as Record<string, unknown>, metadata, instance);
   }
 

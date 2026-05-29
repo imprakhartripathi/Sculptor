@@ -5,11 +5,12 @@ SculptorTS is a TypeScript-first, Express-based framework for building APIs with
 The framework is split into small packages:
 
 - `@sculptor/core` for runtime startup
+- `@sculptor/di` for explicit dependency injection and package metadata
 - `@sculptor/router` for decorators and route assembly
 - `@sculptor/config` for config loading
 - `@sculptor/template-registry` for scaffold templates and generator assets
 - `@sculptor/paws` for logging with dog mode personalities
-- `@sculptor/cli` for scaffolding, generation, app commands, `sc install deps`, and `sc update`
+- `@sculptor/cli` for scaffolding, generation, app commands, `sc install deps`, `sc update`, and `sc doctor`
 
 If you are new to the framework, read this file first, then move into the package docs linked below.
 
@@ -20,6 +21,7 @@ Current stable package line:
 - `@sculptor/config` `0.2.1`
 - `@sculptor/paws` `0.2.1`
 - `@sculptor/router` `0.2.5`
+- `@sculptor/di` `0.1.0`
 - `@sculptor/core` `0.2.3`
 - `@sculptor/cli` `0.2.4`
 - `@sculptor/template-registry` `0.1.6`
@@ -32,6 +34,7 @@ Deprecated ranges are documented in [CHANGELOG.md](CHANGELOG.md). The older rele
 | --- | --- | --- |
 | `@sculptor/cli` | Commands, scaffolding, generators, and test harness management | [packages/cli/README.md](packages/cli/README.md) |
 | `@sculptor/core` | App bootstrap, registry wiring, and runtime server startup | [packages/core/README.md](packages/core/README.md) |
+| `@sculptor/di` | Explicit DI, package metadata, and the package composition contract | [packages/di/README.md](packages/di/README.md) |
 | `@sculptor/router` | Controller decorators, PATCH support, functional router scopes, and Express router assembly | [packages/router/README.md](packages/router/README.md) |
 | `@sculptor/config` | Framework and runtime config loading, `.env` interpolation, and redaction | [packages/config/README.md](packages/config/README.md) |
 | `@sculptor/template-registry` | Template metadata, registry-backed templates, and generator assets | [packages/template-registry/README.md](packages/template-registry/README.md) |
@@ -43,7 +46,7 @@ Deprecated ranges are documented in [CHANGELOG.md](CHANGELOG.md). The older rele
 What it does:
 - Starts the Express server
 - Loads config from `sculptor.json`, `props.json`, and `.env`
-- Mounts controllers and routers from the registry
+- Mounts controllers, packages, and routers from the registry
 - Exposes request context, framework error hooks, and `bootstrapApp({ listen: false })`
 - Prints the listening port and a localhost URL
 
@@ -127,7 +130,8 @@ What it does:
 - Creates new apps
 - Runs dev, build, lint, test, and generate commands
 - Replays scaffold dependency installs with `sc install deps` / `sc i deps`
-- Updates global Sculptor packages with `sc update` outside app roots
+- Updates only the globally installed `@sculptor/cli` with `sc update`
+- Runs project and registry diagnostics with `sc doctor`
 - Reads and writes config with `sc config get`, `sc config set`, and `sc config list`
 - Writes the scaffolded app files
 - Writes a scaffolded `.gitignore` with common Node and TypeScript ignores
@@ -205,7 +209,7 @@ You will find it here:
 ### `src/registry.ts`
 
 What it does:
-- Registers controllers and routers for the app
+- Composes packages, controllers, services, repositories, middlewares, and routers for the app
 
 How it is used:
 - `startApp()` reads the registry
@@ -238,7 +242,8 @@ You will find it here:
 | --- | --- |
 | Run `sc new <app>` | Creates a new scaffolded app and installs dependencies |
 | Run `sc install deps` | Replays the app dependency install sequence after an interrupted setup |
-| Run `sc update` outside an app | Updates globally installed Sculptor packages |
+| Run `sc update` outside an app | Updates the globally installed Sculptor CLI |
+| Run `sc doctor` inside or outside an app | Prints diagnostics and compatibility guidance |
 | Run `sc dev` inside an app root | Starts the app from source |
 | Run `sc start` with a build present | Uses `dist/main.js` unless `--watch` is set |
 | Run `sc start --watch` | Switches to the dev path |

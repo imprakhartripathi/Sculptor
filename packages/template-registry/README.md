@@ -15,6 +15,7 @@ The SculptorTS template-registry package hosts scaffold and generator templates 
 - Exposes the generator helpers used by the CLI
 - Gives future plugins a stable place to register templates
 - Organizes templates under `src/registry/templates/` with a thin export-only `src/index.ts`
+- Includes package scaffold templates for package-aware generation
 
 ## Public API
 

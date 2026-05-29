@@ -83,8 +83,8 @@ describe("scaffolded app", () => {
     const distRegistry = fs.readFileSync(path.join(projectRoot, "dist/registry.js"), "utf8");
 
     expect(distMain).toContain('startApp({ registry, rootDir: appRoot })');
-    expect(distRegistry).toContain("HealthController");
-    expect(distRegistry).toContain("controllers: [HealthController]");
+    expect(distRegistry).toContain("HealthPackage");
+    expect(distRegistry).toContain("packages: [HealthPackage]");
   }, 10000);
 
   it("creates a scaffolded workspace on disk", async () => {
@@ -114,7 +114,12 @@ describe("scaffolded app", () => {
     expect(fs.existsSync(path.join(projectRoot, "src/main.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/registry.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "README.md"))).toBe(true);
-    expect(fs.existsSync(path.join(projectRoot, "src/app/controllers/health.controller.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/index.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.controller.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.service.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.repository.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.dto.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(projectRoot, "src/app/health/health.types.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/main.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/health.controller.spec.ts"))).toBe(true);
     expect(fs.existsSync(path.join(projectRoot, "src/tests/registry.ts"))).toBe(true);

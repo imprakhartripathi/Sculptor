@@ -1,6 +1,9 @@
 export const registry = {
+    packages: [],
     controllers: [],
     routes: [],
-    services: []
+    services: [],
+    repositories: [],
+    middlewares: []
 };
 //# sourceMappingURL=registry.js.map

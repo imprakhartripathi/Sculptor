@@ -26,6 +26,7 @@
   "license": "MIT",
   "dependencies": {
     "@sculptor/config": "^0.2.1",
+    "@sculptor/di": "^0.1.0",
     "@sculptor/paws": "^0.2.1",
     "@sculptor/router": "^0.2.5",
     "express": "^4.21.2",

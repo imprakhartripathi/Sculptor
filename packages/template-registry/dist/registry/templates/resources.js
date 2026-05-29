@@ -9,6 +9,9 @@ import { ${toPascalCase(name)}Controller } from "${importPath}";
 describe("${toPascalCase(name)}Controller", () => {
   it("returns the expected payload", () => {
     const controller = new ${toPascalCase(name)}Controller();
+    (controller as any).${toCamelCase(name)}Service = {
+      status: () => ({ resource: "${name}" })
+    } as never;
 
     expect(controller.findAll()).toEqual({ resource: "${name}" });
   });
@@ -75,20 +78,21 @@ export class ${toPascalCase(name)}Controller {
   findAll() {
     return { resource: "${name}" };
   }
-  }
+}
 `
 });
-export const createFunctionalArtifacts = (name, routeDir = "src/app/routes", handlerDir = "src/app/handlers") => {
+export const createFunctionalArtifacts = (name, routeDir = "src/app/routes", handlerDir = "src/app/handlers", routePrefix) => {
     const normalizedRouteDir = normalizeRelativePath(routeDir);
     const normalizedHandlerDir = normalizeRelativePath(handlerDir);
     const handlerTarget = path.posix.join(normalizedHandlerDir, routeHandlerFileName(name));
     const handlerImport = normalizeRelativePath(path.posix.relative(normalizedRouteDir, handlerTarget));
+    const prefix = routePrefix ?? toRoutePath(name);
     return {
         [`${normalizedRouteDir}/${routeFileName(name)}`]: `import { FunctionalRouter } from "@sculptor/router";
 
 import { ${toCamelCase(name)}ErrorHandler, ${toCamelCase(name)}Handler } from "${handlerImport.replace(/\.ts$/, ".js")}";
 
-export const ${toCamelCase(name)} = FunctionalRouter("/${toRoutePath(name)}");
+export const ${toCamelCase(name)} = FunctionalRouter("/${prefix}");
 
 ${toCamelCase(name)}.get(${toCamelCase(name)}Handler);
 ${toCamelCase(name)}.at("/verify").get(${toCamelCase(name)}Handler);
@@ -133,7 +137,21 @@ export const ${toCamelCase(name)}ErrorHandler: FrameworkErrorHandler = (
     };
 };
 export const createServiceResource = (name) => ({
-    [`src/app/services/${serviceFileName(name)}`]: `export class ${toPascalCase(name)}Service {}
+    [`src/app/services/${serviceFileName(name)}`]: `import { Service } from "@sculptor/core";
+
+@Service()
+export class ${toPascalCase(name)}Service {}
+`
+});
+export const createRepositoryResource = (name) => ({
+    [`src/app/repositories/${name}.repository.ts`]: `import { Repository } from "@sculptor/core";
+
+@Repository()
+export class ${toPascalCase(name)}Repository {}
+`
+});
+export const createDtoResource = (name) => ({
+    [`src/app/dtos/${name}.dto.ts`]: `export class ${toPascalCase(name)}Dto {}
 `
 });
 export const createModuleResource = (name) => ({
@@ -188,6 +206,43 @@ export const createTypeResource = (name, variant, outputDir) => {
     return {
         [`${targetDir}/${fileName}`]: `export type ${toPascalCase(name)} = Record<string, unknown>;
 `
+    };
+};
+export const createPackageResource = (name, outputDir, options) => {
+    const packageFolder = name;
+    const packageRoot = normalizeRelativePath(path.posix.join(outputDir, packageFolder));
+    const controllerName = `${name}.controller.ts`;
+    const serviceName = `${name}.service.ts`;
+    const repositoryName = `${name}.repository.ts`;
+    const dtoName = `${name}.dto.ts`;
+    const typesName = `${name}.types.ts`;
+    const routeName = options?.routeName ?? name;
+    const includeRouteArtifacts = options?.includeRouteArtifacts ?? false;
+    const routePrefix = options?.routePrefix ?? `${toRoutePath(routeName)}/route`;
+    const routeNameFile = `${routeName}.route.ts`;
+    const routeHandlerName = `${routeName}.route.handler.ts`;
+    const controllerSymbol = `${toPascalCase(name)}Controller`;
+    const serviceSymbol = `${toPascalCase(name)}Service`;
+    const repositorySymbol = `${toPascalCase(name)}Repository`;
+    const dtoSymbol = `${toPascalCase(name)}Dto`;
+    const typeSymbol = `${toPascalCase(name)}Types`;
+    const routeSymbol = `${toCamelCase(routeName)}`;
+    const routeHandlerSymbol = `${toCamelCase(routeName)}Handler`;
+    const routeErrorHandlerSymbol = `${toCamelCase(routeName)}ErrorHandler`;
+    const routeArtifacts = includeRouteArtifacts
+        ? {
+            [`${packageRoot}/${routeNameFile}`]: `import { FunctionalRouter } from "@sculptor/router";\n\nimport { ${routeErrorHandlerSymbol}, ${routeHandlerSymbol} } from "./${routeHandlerName.replace(/\.ts$/, ".js")}";\n\nexport const ${routeSymbol} = FunctionalRouter("/${routePrefix}");\n\n${routeSymbol}.get(${routeHandlerSymbol});\n${routeSymbol}.at("/ping").get(${routeHandlerSymbol});\n${routeSymbol}.use(${routeErrorHandlerSymbol});\n`,
+            [`${packageRoot}/${routeHandlerName}`]: `import { normalizeError } from "@sculptor/core";\nimport type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError } from "@sculptor/core";\n\nexport const ${routeHandlerSymbol} = async (\n  req: Req,\n  res: Res,\n  next: Nxt\n): Promise<void> => {\n  try {\n    res.json({\n      status: "ok",\n      resource: "${name}",\n      path: req.path\n    });\n  } catch (error) {\n    next(normalizeError(error));\n  }\n};\n\nexport const ${routeErrorHandlerSymbol}: FrameworkErrorHandler = (\n  error: SculptorError,\n  _req: Req,\n  res: Res,\n  next: Nxt\n): void => {\n  if (res.headersSent) {\n    next(error);\n    return;\n  }\n\n  res.status(500).json({\n    message: error.message,\n    code: error.code,\n    status: error.status\n  });\n};\n`
+        }
+        : {};
+    return {
+        [`${packageRoot}/index.ts`]: `/**\n * @generated true\n */\nimport { Package } from "@sculptor/core";\n\n// [sculptor:imports:start]\nimport { ${controllerSymbol} } from "./${controllerName.replace(/\.ts$/, ".js")}";\nimport { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";\nimport { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";\nimport { ${dtoSymbol} } from "./${dtoName.replace(/\.ts$/, ".js")}";\n${includeRouteArtifacts ? `import { ${routeSymbol} } from "./${routeNameFile.replace(/\.ts$/, ".js")}";\n` : ""}// [sculptor:imports:end]\n\n// [sculptor:exports:start]\nexport * from "./${controllerName.replace(/\.ts$/, ".js")}";\nexport * from "./${serviceName.replace(/\.ts$/, ".js")}";\nexport * from "./${repositoryName.replace(/\.ts$/, ".js")}";\nexport * from "./${dtoName.replace(/\.ts$/, ".js")}";\nexport type { ${typeSymbol} } from "./${typesName.replace(/\.ts$/, ".js")}";\n${includeRouteArtifacts ? `export * from "./${routeNameFile.replace(/\.ts$/, ".js")}";\nexport * from "./${routeHandlerName.replace(/\.ts$/, ".js")}";\n` : ""}// [sculptor:exports:end]\n\n// [sculptor:package:start]\n@Package({\n  name: "${packageFolder}",\n  path: "${packageRoot}",\n  imports: [],\n  exports: [${serviceSymbol}, ${repositorySymbol}, ${dtoSymbol}],\n  controllers: [${controllerSymbol}],\n  services: [${serviceSymbol}],\n  repositories: [${repositorySymbol}],\n  middlewares: [],\n  routes: [${includeRouteArtifacts ? routeSymbol : ""}]\n})\nexport class ${toPascalCase(packageFolder)}Package {}\n// [sculptor:package:end]\n`,
+        [`${packageRoot}/${controllerName}`]: `import { AutoInject, Controller, Get } from "@sculptor/core";\n\nimport { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";\n\n@Controller("/${packageFolder}")\nexport class ${controllerSymbol} {\n  @AutoInject(${serviceSymbol})\n  private readonly ${toCamelCase(name)}Service!: ${toPascalCase(name)}Service;\n\n  @Get("/")\n  findAll() {\n    return this.${toCamelCase(name)}Service.status();\n  }\n}\n`,
+        [`${packageRoot}/${serviceName}`]: `import { AutoInject, Service } from "@sculptor/core";\n\nimport { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";\n\n@Service()\nexport class ${serviceSymbol} {\n  @AutoInject(${repositorySymbol})\n  private readonly ${toCamelCase(name)}Repository!: ${toPascalCase(name)}Repository;\n\n  status() {\n    return this.${toCamelCase(name)}Repository.status();\n  }\n}\n`,
+        [`${packageRoot}/${repositoryName}`]: `import { Repository } from "@sculptor/core";\n\n@Repository()\nexport class ${repositorySymbol} {\n  status() {\n    return { resource: "${name}" };\n  }\n}\n`,
+        [`${packageRoot}/${dtoName}`]: `export class ${dtoSymbol} {\n  resource = "${name}";\n}\n`,
+        [`${packageRoot}/${typesName}`]: `export type ${typeSymbol} = {\n  status: string;\n};\n`,
+        ...routeArtifacts
     };
 };
 //# sourceMappingURL=resources.js.map

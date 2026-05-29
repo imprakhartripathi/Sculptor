@@ -2,6 +2,7 @@ import express from "express";
 import type { Server } from "node:http";
 
 import { loadConfig } from "@sculptor/config";
+import { createRuntimeContainer, flattenRegistry, validateRuntimePackages } from "./packages.js";
 import { paws } from "@sculptor/paws";
 import { createRouter } from "@sculptor/router";
 
@@ -61,18 +62,36 @@ const bootstrap = ({
   );
   const prefix = loadedConfig.runtime.app?.prefix ?? "";
   const loggingEnabled = loadedConfig.framework.logging?.enabled !== false;
+  const flattenedRegistry = flattenRegistry(appRegistry);
 
   if (loggingEnabled) {
     console.log(`[Sculptor] Mode: development | Port: ${resolvedPort}`);
   }
 
+  validateRuntimePackages(appRegistry);
   logRegistryState(rootDir, appRegistry);
 
   const app = createApp();
+  const container = createRuntimeContainer(appRegistry);
+  const dependencyIssues = container.validate();
+
+  if (dependencyIssues.length > 0) {
+    throw new Error(
+      dependencyIssues
+        .map((issue: { reason: string }) => issue.reason)
+        .join("\n")
+    );
+  }
+
+  for (const middleware of flattenedRegistry.middlewares) {
+    app.use(middleware);
+  }
+
   const router = createRouter({
-    controllers: appRegistry.controllers,
-    routes: appRegistry.routes,
-    prefix
+    controllers: flattenedRegistry.controllers,
+    routes: flattenedRegistry.routes,
+    prefix,
+    controllerFactory: (controllerClass) => container.resolve(controllerClass)
   });
 
   app.use(router);

@@ -16,13 +16,16 @@ import {
 import {
   appTsconfigTemplate,
   eslintConfigTemplate,
-  healthControllerSpecTemplate,
   healthControllerTemplate,
-  healthModuleTemplate,
-  healthRouteHandlerTemplate,
+  healthControllerSpecTemplate,
+  healthDtoTemplate,
+  healthPackageIndexTemplate,
+  healthRepositoryTemplate,
   healthRouteSpecTemplate,
   healthRouteTemplate,
+  healthRouteHandlerTemplate,
   healthServiceTemplate,
+  healthTypesTemplate,
   mainSpecTemplate,
   mainTemplate,
   rootGitignoreTemplate,
@@ -40,9 +43,12 @@ import {
 import {
   controllerSpecTemplate,
   createDecoratorController,
+  createPackageResource,
   createFunctionalArtifacts,
   createMiddlewareResource,
   createModuleResource,
+  createRepositoryResource,
+  createDtoResource,
   createRouteResource,
   createServiceResource,
   createTypeResource,
@@ -128,17 +134,19 @@ export const scaffoldProject = (
     "eslint.config.js": eslintConfigTemplate,
     "vitest.config.ts": vitestConfigTemplate,
     ".gitignore": rootGitignoreTemplate,
-    "src/app/services/health.service.ts": healthServiceTemplate,
-    "src/app/modules/health.module.ts": healthModuleTemplate
+    "src/app/health/index.ts": healthPackageIndexTemplate(
+      metadata.mode === "functional" || metadata.mode === "hybrid"
+    ),
+    "src/app/health/health.controller.ts": healthControllerTemplate,
+    "src/app/health/health.service.ts": healthServiceTemplate,
+    "src/app/health/health.repository.ts": healthRepositoryTemplate,
+    "src/app/health/health.dto.ts": healthDtoTemplate,
+    "src/app/health/health.types.ts": healthTypesTemplate
   };
 
-  if (metadata.mode === "decorator" || metadata.mode === "hybrid") {
-    rootFiles["src/app/controllers/health.controller.ts"] = healthControllerTemplate;
-  }
-
   if (metadata.mode === "functional" || metadata.mode === "hybrid") {
-    rootFiles["src/app/routes/health.route.ts"] = healthRouteTemplate;
-    rootFiles["src/app/handlers/health.route.handler.ts"] = healthRouteHandlerTemplate;
+    rootFiles["src/app/health/health.route.ts"] = healthRouteTemplate;
+    rootFiles["src/app/health/health.route.handler.ts"] = healthRouteHandlerTemplate;
   }
 
   if (metadata.testing.generate) {
@@ -157,18 +165,6 @@ export const scaffoldProject = (
     writeTextFile(path.join(targetDir, relativePath), content);
   }
 
-  for (const dir of [
-    "src/app/controllers",
-    "src/app/routes",
-    "src/app/services",
-    "src/app/modules",
-    "src/app/middlewares",
-    "src/app/handlers",
-    "src/tests"
-  ]) {
-    ensureDir(path.join(targetDir, dir));
-  }
-
   if (metadata.testing.generate) {
     syncTestHarness(targetDir);
   }
@@ -184,11 +180,14 @@ export const generateResourceFiles = (
   functionalRoutes = false,
   testingGenerate = false
 ): Record<string, string> => {
-  const resolvedOutputDir = resolveGeneratorOutputDir(kind, outputDir);
+  const resolvedOutputDir = resolveGeneratorOutputDir(kind, outputDir, name);
   const resolvedName = resolveFileStem(name, resolvedOutputDir);
   const sourceFiles: Record<string, string> = {};
 
   switch (kind) {
+    case "pkg":
+      Object.assign(sourceFiles, createPackageResource(resolvedName, resolvedOutputDir));
+      break;
     case "controller":
       Object.assign(sourceFiles, createDecoratorController(resolvedName, resolvedOutputDir));
       if (functionalRoutes) {
@@ -200,6 +199,22 @@ export const generateResourceFiles = (
         [`${resolvedOutputDir}/${
           resolvedName
         }.service.ts`]: createServiceResource(resolvedName)[`src/app/services/${resolvedName}.service.ts`]
+      });
+      break;
+    case "repository":
+      Object.assign(sourceFiles, {
+        [`${resolvedOutputDir}/${
+          resolvedName
+        }.repository.ts`]: createRepositoryResource(resolvedName)[
+          `src/app/repositories/${resolvedName}.repository.ts`
+        ]
+      });
+      break;
+    case "dto":
+      Object.assign(sourceFiles, {
+        [`${resolvedOutputDir}/${resolvedName}.dto.ts`]: createDtoResource(resolvedName)[
+          `src/app/dtos/${resolvedName}.dto.ts`
+        ]
       });
       break;
     case "module":

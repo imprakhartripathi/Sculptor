@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Response, Router } from "express";
 export type ScaffoldMode = "decorator" | "functional" | "hybrid";
 export type DevServer = "tsx" | "nodemon";
-export type GenerateKind = "controller" | "service" | "module" | "middleware" | "type" | "route";
+export type GenerateKind = "controller" | "service" | "repository" | "dto" | "module" | "middleware" | "type" | "route" | "pkg";
 export type TypeVariant = "type" | "interface" | "class" | "enum";
 export type TestingFramework = "vitest";
 export interface TestingMetadata {
@@ -31,7 +31,7 @@ export declare const typeFileName: (name: string, variant: TypeVariant) => strin
 export declare const specFileName: (name: string, suffix: string) => string;
 export declare const toRoutePath: (value: string) => string;
 export declare const specImportPath: (sourcePath: string) => string;
-export declare const resolveGeneratorOutputDir: (kind: GenerateKind, outputDir?: string) => string;
+export declare const resolveGeneratorOutputDir: (kind: GenerateKind, outputDir?: string, name?: string) => string;
 export declare const devScriptFor: (devServer: DevServer) => string;
 export declare const devDependenciesFor: (devServer: DevServer) => string;
 export type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Response, Router };

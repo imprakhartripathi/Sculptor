@@ -7,8 +7,12 @@ import { stdin, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "@sculptor/config";
 import { getConfigValue, listConfigEntries, setConfigValue } from "./config-commands.js";
+import { getPackageFlagValue, handleLsCommand, ensureRootRegistryForPackages, handlePackageCommand, handleRegisterCommand, handleSyncCommand, stripPackageFlag, validatePackageRegistryState } from "./package-commands.js";
+import { getOwningPackage, loadPackageRegistry, savePackageRegistry, syncPackageRegistry, updatePackageIndexForRecord, upsertFileIntoRegistry } from "./package-registry.js";
+import { writeAgentsMarkdown } from "./agents.js";
 import { detectPackageManager, globalInstallArgsFor } from "./package-manager.js";
-import { controllerHelp, generateHelp, generateResourceFiles, middlewareHelp, moduleHelp, parseGenerateMode, readModeFromFlags, routeHelp, scaffoldProject, syncTestHarness, typeHelp, writeGeneratedFiles } from "./scaffold.js";
+import { createDoctorReport, hasDoctorErrors, printDoctorReport } from "./diagnostics.js";
+import { controllerHelp, dtoHelp, generateHelp, generateResourceFiles, middlewareHelp, moduleHelp, parseGenerateMode, readModeFromFlags, routeHelp, scaffoldProject, syncTestHarness, repositoryHelp, typeHelp, writeGeneratedFiles } from "./scaffold.js";
 import { loadPluginModule, resolvePluginManifest } from "./plugins.js";
 const cliPackageVersion = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const versionLabel = cliPackageVersion.version ?? "0.0.0";
@@ -19,14 +23,30 @@ const isCommand = (value) => [
     "build",
     "lint",
     "test",
+    "sync",
     "install",
     "i",
     "update",
     "generate",
     "g",
+    "pkg",
+    "package",
+    "ls",
+    "list",
+    "reg",
+    "register",
+    "r",
+    "ureg",
+    "unreg",
+    "unregister",
+    "ur",
+    "rm",
+    "remove",
     "help",
     "config",
-    "add"
+    "add",
+    "agents",
+    "doctor"
 ].includes(value);
 const isFlag = (value) => value.startsWith("-");
 const isVersionFlag = (value) => ["-v", "--v", "--version", "version", "v"].includes(value);
@@ -133,6 +153,15 @@ const getFlagValue = (args, names) => {
     return undefined;
 };
 const getFlagPresence = (args, names) => names.some((name) => args.includes(name) || args.some((arg) => arg.startsWith(`${name}=`)));
+const resolveRegisteredPackagePath = (cwd, packageName) => {
+    const registry = loadPackageRegistry(cwd);
+    for (const record of Object.values(registry.packages)) {
+        if (record.name === packageName) {
+            return record.path;
+        }
+    }
+    return undefined;
+};
 const getPrompt = (prompt) => {
     if (prompt) {
         return prompt;
@@ -218,14 +247,31 @@ sc <command> [options]
 - \`sc build\`
 - \`sc lint\`
 - \`sc test\`
+- \`sc sync\`
+- \`sc ls\`
+- \`sc list\`
+- \`sc pkg\`
+- \`sc package\`
+- \`sc reg <file>\` / \`sc register <file>\` / \`sc r <file>\`
+- \`sc ureg <file>\` / \`sc unreg <file>\` / \`sc unregister <file>\` / \`sc ur <file>\`
+- \`sc rm <file>\` / \`sc remove <file>\`
 - \`sc install deps\`
 - \`sc update\`
+- \`sc doctor\`
 - \`sc generate\` or \`sc g\`
 - \`sc config <get|set|list>\`
 - \`sc add <plugin>\`
+- \`sc agents\`
+- \`sc agents refresh\`
 - \`sc help\`
   - \`sc help generate\`
   - \`sc help controller\`
+  - \`sc help repository\`
+  - \`sc help dto\`
+  - \`sc help pkg\`
+  - \`sc help package\`
+  - \`sc help ls\`
+  - \`sc help list\`
   - \`sc --version\` / \`sc -v\`
   - \`sc version\`
 
@@ -235,8 +281,12 @@ sc <command> [options]
 - \`service\` / \`s\`
 - \`module\` / \`m\` or \`mo\`
 - \`middleware\` / \`mw\`
+- \`repository\` / \`repo\`
+- \`dto\` / \`dto\`
 - \`type\` / \`t\`
 - \`route\` / \`r\`
+- \`pkg\`
+- \`package\`
 
 ## Binary Alias
 
@@ -264,6 +314,14 @@ const printHelp = (topic, log) => {
         log(middlewareHelp);
         return;
     }
+    if (topic === "repository") {
+        log(repositoryHelp);
+        return;
+    }
+    if (topic === "dto") {
+        log(dtoHelp);
+        return;
+    }
     if (topic === "type") {
         log(typeHelp);
         return;
@@ -276,16 +334,56 @@ const printHelp = (topic, log) => {
         log(`# Config\n\nUse \`sc config get\`, \`sc config set\`, or \`sc config list\`.`);
         return;
     }
+    if (topic === "sync") {
+        log(`# Sync\n\nUse \`sc sync\` to refresh \`sculptor.packages.json\`.`);
+        return;
+    }
+    if (topic === "pkg") {
+        log(`# Package\n\nUse \`sc pkg <name>\`, \`sc package <name>\`, \`sc pkg ls\`, or \`sc pkg rm <name>\`.\nPackage names are exact and are not normalized.`);
+        return;
+    }
+    if (topic === "package") {
+        log(`# Package\n\nUse \`sc pkg <name>\`, \`sc package <name>\`, \`sc pkg ls\`, or \`sc pkg rm <name>\`.\nPackage names are exact and are not normalized.`);
+        return;
+    }
+    if (topic === "ls") {
+        log(`# List\n\nUse \`sc ls\` or \`sc list\`, and \`sc ls -t\` for tree view.`);
+        return;
+    }
+    if (topic === "list") {
+        log(`# List\n\nUse \`sc ls\` or \`sc list\`, and \`sc ls -t\` for tree view.`);
+        return;
+    }
+    if (topic === "reg" || topic === "register" || topic === "r") {
+        log(`# Register\n\nUse \`sc reg <file>\`, \`sc register <file>\`, or \`sc r <file>\``);
+        return;
+    }
+    if (topic === "ureg" || topic === "unreg" || topic === "unregister" || topic === "ur") {
+        log(`# Unregister\n\nUse \`sc ureg <file>\`, \`sc unreg <file>\`, \`sc unregister <file>\`, or \`sc ur <file>\``);
+        return;
+    }
+    if (topic === "rm" || topic === "remove") {
+        log(`# Remove\n\nUse \`sc rm <file>\` or \`sc remove <file>\``);
+        return;
+    }
     if (topic === "install") {
         log(`# Install\n\nUsage: \`sc install deps\` or \`sc i deps\``);
         return;
     }
     if (topic === "update") {
-        log(`# Update\n\nUsage: \`sc update\`\n\nUpdates the globally installed Sculptor packages to their latest versions.`);
+        log(`# Update\n\nUsage: \`sc update\`\n\nUpdates the globally installed Sculptor CLI package.`);
+        return;
+    }
+    if (topic === "doctor") {
+        log(`# Doctor\n\nUsage: \`sc doctor\`\n\nRuns diagnostics for the current Sculptor project and package registry.`);
         return;
     }
     if (topic === "add") {
         log(`# Add\n\nUsage: \`sc add <plugin>\``);
+        return;
+    }
+    if (topic === "agents") {
+        log(`# Agents\n\nUsage: \`sc agents\` or \`sc agents refresh\`\n\nWrites \`AGENTS.md\` in the current directory.`);
         return;
     }
     printMainHelp(log);
@@ -362,17 +460,9 @@ const installScaffoldDependencies = (cwd, spawn, log) => {
     runSpawn("npm", ["i", "@sculptor/core@latest", "@sculptor/paws@latest"], cwd, spawn, log);
     runSpawn("npm", ["i", "-D", "@sculptor/cli@latest", "@sculptor/config@latest", "@sculptor/router@latest"], cwd, spawn, log);
 };
-const updateGlobalSculptorPackages = (cwd, spawn, log) => {
+const updateGlobalCliPackage = (cwd, spawn, log) => {
     const packageManager = detectPackageManager();
-    const packages = [
-        "@sculptor/cli@latest",
-        "@sculptor/config@latest",
-        "@sculptor/core@latest",
-        "@sculptor/paws@latest",
-        "@sculptor/router@latest",
-        "@sculptor/template-registry@latest"
-    ];
-    runSpawn(packageManager, globalInstallArgsFor(packageManager, packages), cwd, spawn, log);
+    runSpawn(packageManager, globalInstallArgsFor(packageManager, ["@sculptor/cli@latest"]), cwd, spawn, log);
 };
 const handleNew = async (args, cwd, prompt, spawn, log) => {
     printBanner(log, "SculptorTS CLI", `v${versionLabel}`);
@@ -411,14 +501,35 @@ const handleInstall = (args, cwd, spawn, log, error) => {
 const handleUpdate = (cwd, spawn, log, error) => {
     requireOutsideAppRoot(cwd, "sc update");
     try {
-        updateGlobalSculptorPackages(cwd, spawn, log);
-        log("Updated globally installed Sculptor packages.");
+        updateGlobalCliPackage(cwd, spawn, log);
+        log("Updated the globally installed Sculptor CLI package.");
     }
     catch (caught) {
         const message = caught instanceof Error ? caught.message : String(caught);
         error(message);
         process.exit(1);
     }
+};
+const handleDoctor = (cwd, log, error) => {
+    const report = createDoctorReport(cwd);
+    printDoctorReport(report, log);
+    if (hasDoctorErrors(report)) {
+        error("Doctor found blocking issues.");
+        process.exit(1);
+    }
+};
+const handleAgents = (args, cwd, log, error) => {
+    const [subcommand] = args;
+    if (subcommand && subcommand !== "refresh" && subcommand !== "help") {
+        error(`Unknown agents subcommand "${subcommand}".`);
+        process.exit(1);
+    }
+    if (subcommand === "help") {
+        log(`# Agents\n\nUsage: \`sc agents\` or \`sc agents refresh\`\n\nWrites \`AGENTS.md\` in the current directory.`);
+        return;
+    }
+    const filePath = writeAgentsMarkdown(cwd);
+    log(`Wrote ${path.relative(cwd, filePath) || "AGENTS.md"}`);
 };
 const handleDev = (args, cwd, spawn, log) => {
     const appRoot = requireAppRoot(cwd, "sc dev");
@@ -464,6 +575,19 @@ const handleStart = (args, cwd, spawn, log) => {
 const handleBuild = (cwd, spawn, log) => {
     const appRoot = requireAppRoot(cwd, "sc build");
     const appTsconfig = path.join(appRoot, "tsconfig.json");
+    try {
+        const report = validatePackageRegistryState(appRoot);
+        if (report.packageCountDetected > 0 || report.packageCountRegistered > 0 || report.messages.length > 0) {
+            log(`Packages detected: ${report.packageCountDetected}`);
+            log(`Packages registered: ${report.packageCountRegistered}`);
+            for (const message of report.messages) {
+                log(message);
+            }
+        }
+    }
+    catch (error) {
+        log(error instanceof Error ? error.message : String(error));
+    }
     runSpawn("npx", ["tsc", "-p", appTsconfig], appRoot, spawn, log);
 };
 const handleLint = (cwd, spawn, log) => {
@@ -529,7 +653,7 @@ const handleAdd = async (args, cwd, log, error) => {
 const handleGenerate = async (args, cwd, prompt, spawn, log, error) => {
     const [kindInput, ...restInput] = args;
     if (!kindInput) {
-        error("Usage: sc generate <controller|service|module|middleware|type|route> <name>");
+        error("Usage: sc generate <controller|service|repository|dto|module|middleware|type|route|pkg> <name>");
         process.exit(1);
     }
     const kindMap = {
@@ -537,25 +661,32 @@ const handleGenerate = async (args, cwd, prompt, spawn, log, error) => {
         controller: "controller",
         s: "service",
         service: "service",
+        repo: "repository",
+        repository: "repository",
         m: "module",
         mo: "module",
         module: "module",
         mw: "middleware",
         middleware: "middleware",
+        dto: "dto",
         t: "type",
         type: "type",
         r: "route",
         route: "route",
-        resource: "route"
+        resource: "route",
+        pkg: "pkg",
+        package: "pkg"
     };
     const kind = kindMap[kindInput];
     if (!kind) {
         error(`Unknown generator "${kindInput}".`);
         process.exit(1);
     }
-    const { args: rest, outputDir } = extractOutputDir(restInput);
+    const { args: restAfterOutputDir, outputDir } = extractOutputDir(restInput);
+    const rest = stripPackageFlag(restAfterOutputDir);
     const positional = rest.filter((arg) => !isFlag(arg));
     const explicitName = positional[0];
+    const packageTarget = getPackageFlagValue(restAfterOutputDir);
     const fallbackMode = resolveDefaultMode(cwd);
     const devServer = resolveDefaultDevServer(cwd);
     const mode = parseGenerateMode(readModeFromFlags(rest, fallbackMode), fallbackMode);
@@ -574,6 +705,21 @@ const handleGenerate = async (args, cwd, prompt, spawn, log, error) => {
         process.exit(1);
     }
     const appRoot = requireAppRoot(cwd, "sc generate");
+    const packagePath = packageTarget ? resolveRegisteredPackagePath(appRoot, packageTarget) : undefined;
+    if (packageTarget && !packagePath) {
+        error(`Package "${packageTarget}" is not registered.`);
+        process.exit(1);
+    }
+    const packageScopedOutput = packagePath !== undefined
+        ? (outputDir
+            ? path.posix.join(packagePath, outputDir)
+            : kind === "route"
+                ? path.posix.join(packagePath, "routes")
+                : packagePath)
+        : undefined;
+    const resolvedOutputDir = kind === "pkg"
+        ? outputDir ?? String(loadConfig(appRoot).framework.project?.srcRoot ?? "src")
+        : packageScopedOutput ?? outputDir;
     const resolvedName = explicitName ??
         (() => {
             if (!outputDir) {
@@ -582,14 +728,29 @@ const handleGenerate = async (args, cwd, prompt, spawn, log, error) => {
             const parts = outputDir.split(/[\\/]/).filter(Boolean);
             return parts[parts.length - 1] ?? "index";
         })();
-    const files = await generateResourceFiles(kind, resolvedName, mode, devServer, outputDir, typeVariant, functionalRoutes, resolveTestingGenerate(appRoot), { cwd, prompt, spawn, log, error });
+    const files = await generateResourceFiles(kind, resolvedName, mode, devServer, resolvedOutputDir, typeVariant, functionalRoutes, resolveTestingGenerate(appRoot), { cwd, prompt, spawn, log, error });
     const targetDir = appRoot;
     if (!files) {
         return;
     }
     await writeGeneratedFiles(targetDir, files, { cwd, prompt, spawn, log, error });
+    if (packagePath || kind === "pkg") {
+        const registry = syncPackageRegistry(appRoot);
+        for (const filePath of Object.keys(files)) {
+            upsertFileIntoRegistry(registry, filePath);
+            const owningPackage = getOwningPackage(registry, filePath);
+            if (owningPackage) {
+                updatePackageIndexForRecord(path.join(appRoot, owningPackage.index), owningPackage);
+            }
+        }
+        savePackageRegistry(appRoot, registry);
+    }
     if (resolveTestingGenerate(appRoot)) {
         await syncTestHarness(targetDir, { cwd, prompt, spawn, log, error });
+    }
+    syncPackageRegistry(appRoot);
+    if (kind === "pkg") {
+        ensureRootRegistryForPackages(appRoot);
     }
     log(`Generated ${kind} "${resolvedName}" using ${mode} mode.`);
     return;
@@ -633,6 +794,9 @@ export const runCli = async (argv = process.argv, options = {}) => {
         case "build":
             handleBuild(cwd, spawn, log);
             return;
+        case "sync":
+            handleSyncCommand(args, { cwd, prompt, log, error });
+            return;
         case "lint":
             handleLint(cwd, spawn, log);
             return;
@@ -646,11 +810,40 @@ export const runCli = async (argv = process.argv, options = {}) => {
         case "update":
             handleUpdate(cwd, spawn, log, error);
             return;
+        case "doctor":
+            handleDoctor(cwd, log, error);
+            return;
         case "config":
             handleConfig(args, cwd, log, error);
             return;
         case "add":
             await handleAdd(args, cwd, log, error);
+            return;
+        case "agents":
+            handleAgents(args, cwd, log, error);
+            return;
+        case "pkg":
+        case "package":
+            await handlePackageCommand(args, { cwd, prompt, log, error });
+            return;
+        case "ls":
+        case "list":
+            handleLsCommand(args, { cwd, prompt, log, error });
+            return;
+        case "reg":
+        case "register":
+        case "r":
+            await handleRegisterCommand("reg", args, { cwd, prompt, log, error });
+            return;
+        case "ureg":
+        case "unreg":
+        case "unregister":
+        case "ur":
+            await handleRegisterCommand("ureg", args, { cwd, prompt, log, error });
+            return;
+        case "rm":
+        case "remove":
+            await handleRegisterCommand("rm", args, { cwd, prompt, log, error });
             return;
         case "generate":
         case "g":

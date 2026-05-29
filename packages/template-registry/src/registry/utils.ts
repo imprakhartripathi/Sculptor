@@ -4,7 +4,16 @@ import type { ErrorRequestHandler, NextFunction, Request, RequestHandler, Respon
 
 export type ScaffoldMode = "decorator" | "functional" | "hybrid";
 export type DevServer = "tsx" | "nodemon";
-export type GenerateKind = "controller" | "service" | "module" | "middleware" | "type" | "route";
+export type GenerateKind =
+  | "controller"
+  | "service"
+  | "repository"
+  | "dto"
+  | "module"
+  | "middleware"
+  | "type"
+  | "route"
+  | "pkg";
 export type TypeVariant = "type" | "interface" | "class" | "enum";
 export type TestingFramework = "vitest";
 
@@ -87,17 +96,24 @@ export const specImportPath = (sourcePath: string): string =>
 
 export const resolveGeneratorOutputDir = (
   kind: GenerateKind,
-  outputDir?: string
+  outputDir?: string,
+  name?: string
 ): string => {
   if (outputDir) {
     return normalizeRelativePath(outputDir);
   }
 
   switch (kind) {
+    case "pkg":
+      return normalizeRelativePath("src");
     case "controller":
       return "src/app/controllers";
     case "service":
       return "src/app/services";
+    case "repository":
+      return "src/app/repositories";
+    case "dto":
+      return "src/app/dtos";
     case "module":
       return "src/app/modules";
     case "middleware":

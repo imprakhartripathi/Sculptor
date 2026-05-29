@@ -1,10 +1,15 @@
 import type express from "express";
+import type { RequestHandler } from "express";
+import type { PackageToken, ProviderToken } from "@sculptor/di";
 import type { ControllerClass, Err as RouterErr, Nxt as RouterNxt, Req as RouterReq, Res as RouterRes, RouterSource, RouterErrorHandler } from "@sculptor/router";
 import type { SculptorError } from "./errors.js";
 export interface RegistryShape {
+    packages?: PackageToken[];
     controllers: ControllerClass[];
     routes: RouterSource[];
-    services: unknown[];
+    services: ProviderToken[];
+    repositories?: ProviderToken[];
+    middlewares?: RequestHandler[];
 }
 export type Req = RouterReq;
 export type Res = RouterRes;

@@ -257,45 +257,58 @@ void startApp({ registry, rootDir: appRoot });
 
 export const registryTemplate = (mode: ScaffoldMode): string => {
   if (mode === "decorator") {
-    return `import { HealthController } from "./app/controllers/health.controller.js";
+    return `import { HealthPackage } from "./app/health/index.js";
 
 export const registry = {
-  controllers: [HealthController],
+  packages: [HealthPackage],
+  controllers: [],
   routes: [],
-  services: []
+  services: [],
+  repositories: [],
+  middlewares: []
 };
 `;
   }
 
   if (mode === "functional") {
-    return `import { health } from "./app/routes/health.route.js";
+    return `import { HealthPackage } from "./app/health/index.js";
 
 export const registry = {
+  packages: [HealthPackage],
   controllers: [],
-  routes: [health],
-  services: []
+  routes: [],
+  services: [],
+  repositories: [],
+  middlewares: []
 };
 `;
   }
 
-  return `import { HealthController } from "./app/controllers/health.controller.js";
-import { health } from "./app/routes/health.route.js";
+  return `import { HealthPackage } from "./app/health/index.js";
 
 export const registry = {
-  controllers: [HealthController],
-  routes: [health],
-  services: []
+  packages: [HealthPackage],
+  controllers: [],
+  routes: [],
+  services: [],
+  repositories: [],
+  middlewares: []
 };
 `;
 };
 
-export const healthControllerTemplate = `import { Controller, Get } from "@sculptor/core";
+export const healthControllerTemplate = `import { AutoInject, Controller, Get } from "@sculptor/core";
+
+import { HealthService } from "./health.service.js";
 
 @Controller("/health")
 export class HealthController {
+  @AutoInject(HealthService)
+  private readonly healthService!: HealthService;
+
   @Get("/")
   health() {
-    return { status: "ok" };
+    return this.healthService.status();
   }
 
   @Get("/ping")
@@ -303,6 +316,77 @@ export class HealthController {
     return { message: "pong" };
   }
 }
+`;
+
+export const healthServiceTemplate = `import { AutoInject, Service } from "@sculptor/core";
+
+import { HealthRepository } from "./health.repository.js";
+
+@Service()
+export class HealthService {
+  @AutoInject(HealthRepository)
+  private readonly healthRepository!: HealthRepository;
+
+  status() {
+    return this.healthRepository.status();
+  }
+}
+`;
+
+export const healthRepositoryTemplate = `import { Repository } from "@sculptor/core";
+
+@Repository()
+export class HealthRepository {
+  status() {
+    return { status: "ok" };
+  }
+}
+`;
+
+export const healthDtoTemplate = `export class HealthDto {
+  status = "ok";
+}
+`;
+
+export const healthTypesTemplate = `export type HealthTypes = {
+  status: string;
+};
+`;
+
+export const healthPackageIndexTemplate = (includeRouteArtifacts: boolean): string => `/**
+ * @generated true
+ */
+import { Package } from "@sculptor/core";
+
+// [sculptor:imports:start]
+import { HealthController } from "./health.controller.js";
+import { HealthService } from "./health.service.js";
+import { HealthRepository } from "./health.repository.js";
+import { HealthDto } from "./health.dto.js";
+${includeRouteArtifacts ? `import { health } from "./health.route.js";\n` : ""}// [sculptor:imports:end]
+
+// [sculptor:exports:start]
+export * from "./health.controller.js";
+export * from "./health.service.js";
+export * from "./health.repository.js";
+export * from "./health.dto.js";
+export type { HealthTypes } from "./health.types.js";
+${includeRouteArtifacts ? `export * from "./health.route.js";\nexport * from "./health.route.handler.js";\n` : ""}// [sculptor:exports:end]
+
+// [sculptor:package:start]
+@Package({
+  name: "health",
+  path: "src/app/health",
+  imports: [],
+  exports: [HealthService, HealthRepository, HealthDto],
+  controllers: [HealthController],
+  services: [HealthService],
+  repositories: [HealthRepository],
+  middlewares: [],
+  routes: [${includeRouteArtifacts ? "health" : ""}]
+})
+export class HealthPackage {}
+// [sculptor:package:end]
 `;
 
 export const healthRouteHandlerTemplate = `import { normalizeError } from "@sculptor/core";
@@ -346,32 +430,25 @@ export const healthErrorHandler: FrameworkErrorHandler = (
 
 export const healthRouteTemplate = `import { FunctionalRouter } from "@sculptor/router";
 
-import { healthErrorHandler, healthHandler } from "../handlers/health.route.handler.js";
+import { healthErrorHandler, healthHandler } from "./health.route.handler.js";
 
-export const health = FunctionalRouter("/status");
+export const health = FunctionalRouter("/health/route");
 
 health.get(healthHandler);
 health.at("/ping").get(healthHandler);
 health.use(healthErrorHandler);
 `;
 
-export const healthServiceTemplate = `export class HealthService {
-  status() {
-    return { status: "ok" };
-  }
-}
-`;
-
-export const healthModuleTemplate = `export class HealthModule {}
-`;
-
 export const healthControllerSpecTemplate = `import { describe, expect, it } from "vitest";
 
-import { HealthController } from "../app/controllers/health.controller.js";
+import { HealthController } from "../app/health/index.js";
 
 describe("HealthController", () => {
   it("returns the expected health payload", () => {
     const controller = new HealthController();
+    (controller as any).healthService = {
+      status: () => ({ status: "ok" })
+    } as never;
 
     expect(controller.health()).toEqual({ status: "ok" });
     expect(controller.ping()).toEqual({ message: "pong" });
@@ -383,15 +460,15 @@ export const healthRouteSpecTemplate = `import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
-import { health } from "../app/routes/health.route.js";
+import { health } from "../app/health/health.route.js";
 
 describe("health", () => {
   it("serves the health endpoint", async () => {
     const app = express();
     app.use(health.toRouter());
 
-    await request(app).get("/status").expect(200).expect({ status: "ok" });
-    await request(app).get("/status/ping").expect(200).expect({ message: "pong" });
+    await request(app).get("/health/route").expect(200).expect({ status: "ok" });
+    await request(app).get("/health/route/ping").expect(200).expect({ message: "pong" });
   });
 });
 `;

@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { ensureDir, writeTextFile } from "../fs.js";
 import { normalizeRelativePath, resolveFileStem, resolveGeneratorOutputDir } from "./utils.js";
-import { eslintConfigTemplate, healthControllerSpecTemplate, healthControllerTemplate, healthModuleTemplate, healthRouteHandlerTemplate, healthRouteSpecTemplate, healthRouteTemplate, healthServiceTemplate, mainSpecTemplate, mainTemplate, rootGitignoreTemplate, propsTemplate, registryTemplate, rootPackageJsonTemplate, rootReadmeTemplate, rootTsconfigTemplate, sculptorTemplate, testHarnessSpecTemplate, testRegistryTemplate, testRunnerTemplate, vitestConfigTemplate } from "./templates/scaffold.js";
-import { controllerSpecTemplate, createDecoratorController, createFunctionalArtifacts, createMiddlewareResource, createModuleResource, createRouteResource, createServiceResource, createTypeResource, middlewareSpecTemplate, routeSpecTemplate, serviceSpecTemplate } from "./templates/resources.js";
+import { eslintConfigTemplate, healthControllerTemplate, healthControllerSpecTemplate, healthDtoTemplate, healthPackageIndexTemplate, healthRepositoryTemplate, healthRouteSpecTemplate, healthRouteTemplate, healthRouteHandlerTemplate, healthServiceTemplate, healthTypesTemplate, mainSpecTemplate, mainTemplate, rootGitignoreTemplate, propsTemplate, registryTemplate, rootPackageJsonTemplate, rootReadmeTemplate, rootTsconfigTemplate, sculptorTemplate, testHarnessSpecTemplate, testRegistryTemplate, testRunnerTemplate, vitestConfigTemplate } from "./templates/scaffold.js";
+import { controllerSpecTemplate, createDecoratorController, createPackageResource, createFunctionalArtifacts, createMiddlewareResource, createModuleResource, createRepositoryResource, createDtoResource, createRouteResource, createServiceResource, createTypeResource, middlewareSpecTemplate, routeSpecTemplate, serviceSpecTemplate } from "./templates/resources.js";
 import { controllerHelp, generateHelp, middlewareHelp, moduleHelp, routeHelp, typeHelp } from "./templates/help.js";
 export { controllerHelp, generateHelp, middlewareHelp, moduleHelp, routeHelp, typeHelp };
 const collectSpecPaths = (dir, rootDir = dir) => {
@@ -52,15 +52,16 @@ export const scaffoldProject = (metadata, targetDir) => {
         "eslint.config.js": eslintConfigTemplate,
         "vitest.config.ts": vitestConfigTemplate,
         ".gitignore": rootGitignoreTemplate,
-        "src/app/services/health.service.ts": healthServiceTemplate,
-        "src/app/modules/health.module.ts": healthModuleTemplate
+        "src/app/health/index.ts": healthPackageIndexTemplate(metadata.mode === "functional" || metadata.mode === "hybrid"),
+        "src/app/health/health.controller.ts": healthControllerTemplate,
+        "src/app/health/health.service.ts": healthServiceTemplate,
+        "src/app/health/health.repository.ts": healthRepositoryTemplate,
+        "src/app/health/health.dto.ts": healthDtoTemplate,
+        "src/app/health/health.types.ts": healthTypesTemplate
     };
-    if (metadata.mode === "decorator" || metadata.mode === "hybrid") {
-        rootFiles["src/app/controllers/health.controller.ts"] = healthControllerTemplate;
-    }
     if (metadata.mode === "functional" || metadata.mode === "hybrid") {
-        rootFiles["src/app/routes/health.route.ts"] = healthRouteTemplate;
-        rootFiles["src/app/handlers/health.route.handler.ts"] = healthRouteHandlerTemplate;
+        rootFiles["src/app/health/health.route.ts"] = healthRouteTemplate;
+        rootFiles["src/app/health/health.route.handler.ts"] = healthRouteHandlerTemplate;
     }
     if (metadata.testing.generate) {
         rootFiles["src/tests/main.spec.ts"] = mainSpecTemplate;
@@ -74,26 +75,18 @@ export const scaffoldProject = (metadata, targetDir) => {
     for (const [relativePath, content] of Object.entries(rootFiles)) {
         writeTextFile(path.join(targetDir, relativePath), content);
     }
-    for (const dir of [
-        "src/app/controllers",
-        "src/app/routes",
-        "src/app/services",
-        "src/app/modules",
-        "src/app/middlewares",
-        "src/app/handlers",
-        "src/tests"
-    ]) {
-        ensureDir(path.join(targetDir, dir));
-    }
     if (metadata.testing.generate) {
         syncTestHarness(targetDir);
     }
 };
 export const generateResourceFiles = (kind, name, _mode, _devServer = "tsx", outputDir, typeVariant = "type", functionalRoutes = false, testingGenerate = false) => {
-    const resolvedOutputDir = resolveGeneratorOutputDir(kind, outputDir);
+    const resolvedOutputDir = resolveGeneratorOutputDir(kind, outputDir, name);
     const resolvedName = resolveFileStem(name, resolvedOutputDir);
     const sourceFiles = {};
     switch (kind) {
+        case "pkg":
+            Object.assign(sourceFiles, createPackageResource(resolvedName, resolvedOutputDir));
+            break;
         case "controller":
             Object.assign(sourceFiles, createDecoratorController(resolvedName, resolvedOutputDir));
             if (functionalRoutes) {
@@ -103,6 +96,16 @@ export const generateResourceFiles = (kind, name, _mode, _devServer = "tsx", out
         case "service":
             Object.assign(sourceFiles, {
                 [`${resolvedOutputDir}/${resolvedName}.service.ts`]: createServiceResource(resolvedName)[`src/app/services/${resolvedName}.service.ts`]
+            });
+            break;
+        case "repository":
+            Object.assign(sourceFiles, {
+                [`${resolvedOutputDir}/${resolvedName}.repository.ts`]: createRepositoryResource(resolvedName)[`src/app/repositories/${resolvedName}.repository.ts`]
+            });
+            break;
+        case "dto":
+            Object.assign(sourceFiles, {
+                [`${resolvedOutputDir}/${resolvedName}.dto.ts`]: createDtoResource(resolvedName)[`src/app/dtos/${resolvedName}.dto.ts`]
             });
             break;
         case "module":

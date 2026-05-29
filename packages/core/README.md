@@ -12,10 +12,11 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 
 - Starts an Express server from a registry
 - Loads runtime config and framework config
-- Creates the app router from controllers and routes
+- Creates the app router from packages, controllers, and routes
 - Exposes the shared registry shape used by scaffolded apps
 - Exposes `bootstrapApp({ listen: false })` for validation and CI flows
 - Exposes request context and framework error hook support
+- Re-exports the package metadata and explicit DI decorators from `@sculptor/di`
 
 ## Public API
 
@@ -47,6 +48,15 @@ Options:
 ### `registry`
 
 The default empty registry shape exported by the package.
+
+The current registry shape supports both the legacy flat arrays and the package-aware form:
+
+- `packages`
+- `controllers`
+- `services`
+- `repositories`
+- `middlewares`
+- `routes`
 
 ### Re-exports
 

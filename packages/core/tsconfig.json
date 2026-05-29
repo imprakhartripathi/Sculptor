@@ -9,6 +9,7 @@
     "sourceMap": true,
     "rootDir": "src",
     "outDir": "dist",
+    "composite": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
@@ -17,5 +18,8 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../di" }
+  ]
 }

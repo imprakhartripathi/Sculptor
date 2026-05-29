@@ -45,15 +45,21 @@ export const toRoutePath = (value) => {
     return `${kebab}s`;
 };
 export const specImportPath = (sourcePath) => normalizeRelativePath(path.posix.relative("src/tests", sourcePath)).replace(/\.ts$/, ".js");
-export const resolveGeneratorOutputDir = (kind, outputDir) => {
+export const resolveGeneratorOutputDir = (kind, outputDir, name) => {
     if (outputDir) {
         return normalizeRelativePath(outputDir);
     }
     switch (kind) {
+        case "pkg":
+            return normalizeRelativePath("src");
         case "controller":
             return "src/app/controllers";
         case "service":
             return "src/app/services";
+        case "repository":
+            return "src/app/repositories";
+        case "dto":
+            return "src/app/dtos";
         case "module":
             return "src/app/modules";
         case "middleware":

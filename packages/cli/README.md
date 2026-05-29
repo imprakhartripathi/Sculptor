@@ -10,7 +10,7 @@ It handles:
 - Dev and production startup paths
 - Help and version output
 - App dependency recovery with `sc install deps`
-- Global package refresh with `sc update`
+- Global CLI refresh with `sc update`
 - Scaffolded `.gitignore` generation
 
 ## Version Policy
@@ -29,15 +29,23 @@ It handles:
 | `sc build` | Builds the app |
 | `sc lint` | Lints the app |
 | `sc test` | Runs the test suite |
+| `sc sync` | Syncs and validates `sculptor.packages.json` |
+| `sc ls` | Prints the tree and package diagnostics |
+| `sc pkg` | Prints package diagnostics |
 | `sc config get <path>` | Reads a config value |
 | `sc config set <path=value>` | Writes a config value |
 | `sc config list` | Lists the merged config |
+| `sc reg <file>` | Registers a file in the package registry |
+| `sc ureg <file>` | Unregisters a file from the package registry |
+| `sc rm <file>` | Deletes a file and syncs the registry |
 | `sc install deps` | Replays app dependency installs inside a Sculptor app |
 | `sc i deps` | Alias for `sc install deps` |
-| `sc update` | Updates globally installed Sculptor packages outside an app |
+| `sc update` | Updates the globally installed Sculptor CLI |
+| `sc doctor` | Runs project and registry diagnostics |
 | `sc generate` / `sc g` | Generates framework resources |
 | `sc g c user` | Generates a controller resource |
 | `sc g r user` | Generates a functional route and handler pair |
+| `sc g pkg user` | Generates a package index and package-local resources |
 | `sc g c user in src/app/users` | Generates into a custom path |
 | `sc g c in src/app/users` | Infers the name from the path and generates there |
 | `sc g t user -e` | Generates an enum type file |
@@ -244,7 +252,7 @@ Behavior:
 ### `sc update`
 
 What it does:
-- Updates globally installed Sculptor packages to their latest versions
+- Updates the globally installed Sculptor CLI package
 
 How it is used:
 ```bash
@@ -254,7 +262,22 @@ sc update
 Behavior:
 - Works only outside a Sculptor app root
 - Uses the active package manager when possible
-- Updates the global Sculptor package set in one pass
+- Updates only `@sculptor/cli`
+
+### `sc doctor`
+
+What it does:
+- Runs project, package registry, and version-awareness diagnostics
+
+How it is used:
+```bash
+sc doctor
+```
+
+Behavior:
+- Reads the current app root when one is present
+- Reports package registry health and registry shape
+- Surfaces compatibility warnings without mutating files
 
 ### `sc generate` and `sc g`
 
@@ -372,6 +395,7 @@ sc --version
 | `-class` | Type generator creates `*.class.ts` |
 | `-e` | Type generator creates `*.enum.ts` |
 | `-enum` | Type generator creates `*.enum.ts` |
+| `-p=<package>` | Targets a registered package for package-aware generation |
 
 ## Generator Behavior
 
@@ -471,6 +495,19 @@ sc g r user
 sc g r user in src/app/routes
 ```
 
+### Package generation
+
+What it does:
+- Creates a package index with `@Package(...)`
+- Writes package-local controller, service, repository, and type files
+
+Examples:
+```bash
+sc generate pkg user
+sc g pkg user
+sc g pkg user in src/app/pkgs
+```
+
 ## Test Generation
 
 Test generation is controlled by `testing.generate` in `sculptor.json`.
@@ -518,6 +555,7 @@ Only these commands work from outside a Sculptor app root:
 - `sc help`
 - `sc version`
 - `sc update`
+- `sc doctor`
 
 `sc install deps` and `sc i deps` require a Sculptor app root.
 
