@@ -4,8 +4,10 @@ The SculptorTS router package provides decorators and router assembly for contro
 
 ## Version Policy
 
-- Release line: `v0.3.x`
+- Pre-release line: `v0.3.x`
+- Current package version: `0.3.1`
 - The router package keeps the controller, hybrid, and functional routing contract stable in the package-aware runtime line.
+- Expect minor changes and fixes until `v1.0.0`.
 
 ## What This Package Does
 

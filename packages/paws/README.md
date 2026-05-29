@@ -4,9 +4,11 @@ Lightweight SculptorTS logger with a standard mode and a more expressive dog mod
 
 ## Version Notes
 
-This package is on the current stable line. No deprecated range is called out here.
+This package is on the `v0.3.x` pre-release line. No deprecated range is called out here.
 
-Current stable: `0.2.1`
+Current package version: `0.3.1`
+
+Expect minor changes and fixes until `v1.0.0`.
 
 ## Config
 

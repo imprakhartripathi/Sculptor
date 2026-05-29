@@ -17,8 +17,10 @@ It handles:
 
 ## Version Policy
 
-- Release line: `v0.3.x`
-- This line adds package-aware generation, `sc doctor`, `sc agents`, `sculptor.packages.json`, and package alias commands.
+- Pre-release line: `v0.3.x`
+- Current package version: `0.3.1`
+- This pre-release line adds package-aware generation, `sc doctor`, `sc agents`, `sculptor.packages.json`, and package alias commands.
+- Expect minor changes and fixes until `v1.0.0`.
 
 ## Quick Command Sheet
 

@@ -1,6 +1,6 @@
 {
   "name": "@sculptor/cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "bin": {
     "sc": "./bin/sc.js",
@@ -36,9 +36,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@sculptor/config": "^0.3.0",
-    "@sculptor/core": "^0.3.0",
-    "@sculptor/template-registry": "^0.3.0",
+    "@sculptor/config": "^0.3.1",
+    "@sculptor/core": "^0.3.1",
+    "@sculptor/template-registry": "^0.3.1",
     "typescript": "^5.8.3",
     "tsx": "^4.19.4"
   }

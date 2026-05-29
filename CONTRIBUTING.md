@@ -2,7 +2,7 @@
 
 ## Welcome
 
-SculptorTS is a TypeScript-first, Express-based framework split across npm workspaces. The repo contains the runtime packages, the CLI, the template registry, the DI package, and the documentation set that describes the v0.3.x package-aware architecture.
+SculptorTS is a TypeScript-first, Express-based framework split across npm workspaces. The repo contains the runtime packages, the CLI, the template registry, the DI package, and the documentation set that describes the `v0.3.x` pre-release package-aware architecture.
 
 ## Before You Start
 
@@ -10,7 +10,7 @@ SculptorTS is a TypeScript-first, Express-based framework split across npm works
 - Read the package docs in `packages/*/README.md`.
 - Read the wiki pages in `wiki/` if you are touching user-facing behavior.
 - Install dependencies with `npm install`.
-- Make sure you are working on the current v0.3.x line documented in `readme.md` and `CHANGELOG.md`.
+- Make sure you are working on the current `v0.3.x` pre-release line documented in `readme.md` and `CHANGELOG.md`.
 
 ## Development Setup
 
@@ -115,7 +115,7 @@ Each package has its own `package.json`, `tsconfig.json`, and `src/` tree.
 - Use workspace builds when you only need to validate one package.
 - Update dependent packages together when a public API changes.
 - Keep package docs in sync with behavior changes.
-- Package indexes are the runtime contract in the v0.3.x line, so changes to package composition should preserve generated marker blocks and `@Package(...)` metadata.
+- Package indexes are the runtime contract in the `v0.3.x` pre-release line, so changes to package composition should preserve generated marker blocks and `@Package(...)` metadata.
 - Publishable packages run `npm run prepack` before publish, which builds the package first.
 
 The published packages currently depend on each other like this:

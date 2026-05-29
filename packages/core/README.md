@@ -4,8 +4,10 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 
 ## Version Policy
 
-- Release line: `v0.3.x`
-- This line keeps the request context, package flattening, and explicit DI re-exports aligned with the package-aware runtime contract.
+- Pre-release line: `v0.3.x`
+- Current package version: `0.3.1`
+- This pre-release line keeps the request context, package flattening, and explicit DI re-exports aligned with the package-aware runtime contract.
+- Expect minor changes and fixes until `v1.0.0`.
 
 ## What This Package Does
 

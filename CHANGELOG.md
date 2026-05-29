@@ -2,9 +2,9 @@
 
 This changelog documents the current Sculptor release line and the historical ranges that remain relevant for compatibility and support conversations.
 
-## v0.3.x
+## v0.3.x Pre-Release
 
-The v0.3.x line is the package-aware Sculptor architecture.
+The `v0.3.x` pre-release line is the package-aware Sculptor architecture.
 
 Highlights:
 
@@ -20,7 +20,9 @@ Highlights:
 - the CLI supports package aliases such as `pkg` / `package`, `ls` / `list`, and `reg` / `register` / `r`
 - hybrid apps continue to support decorator, functional, and mixed composition
 
-Current v0.3.x package family:
+This is still the pre-release phase, so changes may continue to land as the package contracts settle on the way to `v1.0.0`.
+
+Current pre-release package family:
 
 - `@sculptor/core`
 - `@sculptor/router`
@@ -28,7 +30,7 @@ Current v0.3.x package family:
 - `@sculptor/paws`
 - `@sculptor/cli`
 - `@sculptor/template-registry`
-- `@sculptor/di` begins at `0.1.0`
+- `@sculptor/di` begins at `0.1.1`
 
 ## Legacy Compatibility Notes
 

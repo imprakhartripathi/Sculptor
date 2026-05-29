@@ -2,7 +2,7 @@
 
 SculptorTS is a TypeScript-first, Express-based framework for building APIs with decorator controllers, functional routers, or both together.
 
-The v0.3.x line introduces a package-aware architecture that is:
+The v0.3.x pre-release line introduces a package-aware architecture that is:
 
 - explicit
 - registry-aware
@@ -25,7 +25,7 @@ If you are new to the framework, read this file first, then move into the packag
 
 ## Release Notes
 
-Current v0.3.x line:
+Current pre-release line: `v0.3.1`
 
 - `@sculptor/core`
 - `@sculptor/router`
@@ -33,7 +33,7 @@ Current v0.3.x line:
 - `@sculptor/paws`
 - `@sculptor/cli`
 - `@sculptor/template-registry`
-- `@sculptor/di` starts on `0.1.0`
+- `@sculptor/di` starts on `0.1.1`
 
 This line adds:
 
@@ -47,6 +47,8 @@ This line adds:
 - safer generated marker blocks for package index updates
 - `sc update` restricted to the globally installed `@sculptor/cli`
 - `req.ctx` as the default request context on Sculptor-bootstrapped apps
+
+This is a pre-release path to `v1.0.0`. The final stable line will be `1.x`, and expect minor changes and fixes until then.
 
 Historical package ranges remain documented in [CHANGELOG.md](CHANGELOG.md).
 
