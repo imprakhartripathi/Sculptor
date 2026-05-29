@@ -16,3 +16,4 @@ yarn-error.log*
 *.tsbuildinfo
 .codex
 test-smoke/
+publish.md

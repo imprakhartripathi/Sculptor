@@ -4,9 +4,8 @@ The SculptorTS router package provides decorators and router assembly for contro
 
 ## Version Policy
 
-- Deprecated range: `0.2.0` through `0.2.4`
-- Current stable: `0.2.5`
-- Reason: the earlier releases were published before the current collision detection, `@Patch()` support, and typed functional-router scope model were stabilized.
+- Release line: `v0.3.x`
+- The router package keeps the controller, hybrid, and functional routing contract stable in the package-aware runtime line.
 
 ## What This Package Does
 

@@ -2,6 +2,11 @@
 
 The SculptorTS DI package provides explicit, decorator-driven dependency injection and package metadata.
 
+## Release Line
+
+- Initial release: `0.1.0`
+- This package is part of the v0.3.x package-aware architecture line.
+
 ## What This Package Does
 
 - Defines `@Service()`, `@Repository()`, `@Middleware()`, `@Package()`, and `@AutoInject()`

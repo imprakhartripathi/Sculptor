@@ -4,9 +4,8 @@ The SculptorTS template-registry package hosts scaffold and generator templates 
 
 ## Version Notes
 
-- Deprecated range: `0.1.0` through `0.1.5`
-- Current stable: `0.1.6`
-- Reason: the earlier releases predate the registry split, the typed template files under `src/registry/`, the scaffolded `.gitignore`, and the current route/handler scaffold layout.
+- Release line: `v0.3.x`
+- This line keeps the template registry focused on scaffold and generator content while the CLI owns orchestration, package registry updates, and `AGENTS.md` generation.
 
 ## What This Package Does
 
@@ -16,6 +15,7 @@ The SculptorTS template-registry package hosts scaffold and generator templates 
 - Gives future plugins a stable place to register templates
 - Organizes templates under `src/registry/templates/` with a thin export-only `src/index.ts`
 - Includes package scaffold templates for package-aware generation
+- Supports marker-block based regeneration for package indexes and other generated files
 
 ## Public API
 

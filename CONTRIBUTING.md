@@ -2,30 +2,28 @@
 
 ## Welcome
 
-SculptorTS is a TypeScript-first, Express-based framework split across npm workspaces. The repo contains the runtime packages, the CLI, the template registry, and a sample app workspace under `app/`.
+SculptorTS is a TypeScript-first, Express-based framework split across npm workspaces. The repo contains the runtime packages, the CLI, the template registry, the DI package, and the documentation set that describes the v0.3.x package-aware architecture.
 
 ## Before You Start
 
 - Read the root docs in `readme.md`.
 - Read the package docs in `packages/*/README.md`.
+- Read the wiki pages in `wiki/` if you are touching user-facing behavior.
 - Install dependencies with `npm install`.
-- Make sure you are working on the stable line described in `readme.md` and `CHANGELOG.md`.
+- Make sure you are working on the current v0.3.x line documented in `readme.md` and `CHANGELOG.md`.
 
 ## Development Setup
 
 The repo uses npm workspaces:
 
-- `app/` is the app workspace
 - `packages/*` are published packages
+- `test-smoke/` may be used for local end-to-end validation in a gitignored smoke app
 
 Useful root commands:
 
 ```bash
 npm install
-npm run dev
-npm run start
 npm run build
-npm run lint
 npm test
 ```
 
@@ -34,7 +32,7 @@ Package-specific builds use workspaces directly:
 ```bash
 npm run build --workspace @sculptor/config
 npm run build --workspace @sculptor/router
-npm -w app run build
+npm run build --workspace @sculptor/cli
 ```
 
 To run the CLI from the repo:
@@ -47,9 +45,9 @@ npm run cli -- help
 
 From the repo root:
 
-- `npm run dev` starts the example app from source through the workspace script
-- `npm run start` starts the app in production-style mode
-- `npm run build` builds the packages first, then builds `app/`
+- `npm run build` builds the workspace packages first
+- `npm test` runs the repository-level test suite
+- use a gitignored smoke app under `test-smoke/` if you want to validate the CLI end-to-end without touching git-tracked files
 
 In a Sculptor app root:
 
@@ -57,6 +55,8 @@ In a Sculptor app root:
 sc dev
 sc start
 sc build
+sc sync
+sc doctor
 ```
 
 If you are working on the CLI itself, use the local entrypoint:
@@ -65,6 +65,8 @@ If you are working on the CLI itself, use the local entrypoint:
 sc help
 sc new demo-app
 sc g c user
+sc g pkg user
+sc agents
 ```
 
 ## Running Tests
@@ -95,13 +97,14 @@ Linting is configured for TypeScript files and ignores `dist/` and `node_modules
 
 ## Repository Structure
 
-- `app/` - sample app workspace used by the root scripts
 - `packages/config/` - config loading, interpolation, and redaction
-- `packages/core/` - runtime bootstrap and server startup
+- `packages/core/` - runtime bootstrap, request context, and server startup
+- `packages/di/` - explicit DI, package metadata, and package composition
 - `packages/router/` - decorators, functional routers, and route assembly
 - `packages/paws/` - logger and dog mode output
 - `packages/template-registry/` - scaffold and generator templates
-- `packages/cli/` - CLI, scaffolding, config commands, and generators
+- `packages/cli/` - CLI, scaffolding, config commands, diagnostics, and generators
+- `test-smoke/` - optional gitignored smoke apps for local validation
 - `tests/` - repository-level integration and regression tests
 
 ## Working With Packages
@@ -112,12 +115,12 @@ Each package has its own `package.json`, `tsconfig.json`, and `src/` tree.
 - Use workspace builds when you only need to validate one package.
 - Update dependent packages together when a public API changes.
 - Keep package docs in sync with behavior changes.
+- Package indexes are the runtime contract in the v0.3.x line, so changes to package composition should preserve generated marker blocks and `@Package(...)` metadata.
 - Publishable packages run `npm run prepack` before publish, which builds the package first.
-- The repo does not document a broader release automation flow, so version bumps and release coordination should follow the stable lines tracked in `readme.md` and `CHANGELOG.md`.
 
 The published packages currently depend on each other like this:
 
-- `@sculptor/core` depends on `@sculptor/config`, `@sculptor/paws`, and `@sculptor/router`
+- `@sculptor/core` depends on `@sculptor/config`, `@sculptor/paws`, `@sculptor/router`, and `@sculptor/di`
 - `@sculptor/cli` depends on `@sculptor/config`, `@sculptor/core`, and `@sculptor/template-registry`
 - `@sculptor/paws` depends on `@sculptor/config`
 
@@ -125,12 +128,13 @@ The published packages currently depend on each other like this:
 
 - Use TypeScript strict mode and ES modules.
 - Keep code direct and small where possible.
-- Match the repository's existing terminology: `sculptor.json`, `props.json`, `sc`, `registry`, `functional router`, `dog mode`.
+- Match the repository's existing terminology: `sculptor.json`, `props.json`, `sc`, `registry`, `package index`, `functional router`, `dog mode`, and `AGENTS.md`.
 - Prefer explicit behavior over clever abstractions.
 - Keep comments and log messages short and practical.
 - If you intentionally ignore a variable or argument, prefix it with `_` to match the ESLint rules.
+- In NodeNext packages, keep runtime-facing imports in `.js` form even when authoring `.ts` source.
 
-The codebase already uses experimental decorators and emitted decorator metadata, so changes in `@sculptor/router` and `@sculptor/core` should preserve that contract.
+The codebase already uses experimental decorators and emitted decorator metadata, so changes in `@sculptor/router`, `@sculptor/core`, and `@sculptor/di` should preserve that contract.
 
 ## Commit Guidelines
 
@@ -164,7 +168,7 @@ Use the bug report issue template and include:
 - actual behavior
 - environment details
 
-For CLI or scaffold bugs, include the exact `sc` command and the files that were generated or modified.
+For CLI, registry, or scaffold bugs, include the exact `sc` command and the files that were generated or modified.
 
 ## Requesting Features
 
@@ -175,7 +179,7 @@ Use the feature request issue template and describe:
 - alternatives you considered
 - example usage when it helps
 
-If the request affects CLI output, router behavior, config loading, or generated files, include a concrete before-and-after example.
+If the request affects CLI output, router behavior, config loading, package indexes, or generated files, include a concrete before-and-after example.
 
 ## Documentation Contributions
 
@@ -184,8 +188,9 @@ Docs live in:
 - `readme.md`
 - `packages/*/README.md`
 - `CHANGELOG.md`
+- `wiki/`
 
-When behavior changes, update the relevant package docs at the same time. Keep examples aligned with the current CLI commands and stable package versions.
+When behavior changes, update the relevant package docs at the same time. Keep examples aligned with the current CLI commands and release line.
 
 ## Questions and Discussions
 

@@ -4,15 +4,15 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 
 ## Version Policy
 
-- Deprecated range: `0.2.0` through `0.2.2`
-- Current stable: `0.2.3`
-- Reason: the earlier releases predate the stabilized request context, framework error hook, and non-listening bootstrap flow, so they are more likely to surface bootstrap and typing issues in generated apps.
+- Release line: `v0.3.x`
+- This line keeps the request context, package flattening, and explicit DI re-exports aligned with the package-aware runtime contract.
 
 ## What This Package Does
 
 - Starts an Express server from a registry
 - Loads runtime config and framework config
-- Creates the app router from packages, controllers, and routes
+- Creates the app router from packages, controllers, services, repositories, middlewares, and routes
+- Flattens package composition internally while keeping the package index as the package contract
 - Exposes the shared registry shape used by scaffolded apps
 - Exposes `bootstrapApp({ listen: false })` for validation and CI flows
 - Exposes request context and framework error hook support
@@ -62,6 +62,11 @@ The current registry shape supports both the legacy flat arrays and the package-
 
 `@sculptor/core` also re-exports the router decorators and config helpers:
 
+- `Package`
+- `AutoInject`
+- `Service`
+- `Repository`
+- `Middleware`
 - `Controller`
 - `Get`
 - `Patch`
@@ -115,6 +120,7 @@ If the resolved port is `0`, the runtime reads the actual bound port from the se
 
 | If the registry contains | Then the runtime does this |
 | --- | --- |
+| Packages | Flattens the package composition and registers the package-owned runtime pieces |
 | Controllers | Scans the controller metadata and registers decorator-based routes |
 | Routes | Mounts the Express routers directly |
 | Both controllers and routes | Combines both into one app router |

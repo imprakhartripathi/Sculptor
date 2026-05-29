@@ -1,176 +1,266 @@
 # SculptorTS
 
-SculptorTS is a TypeScript-first, Express-based framework for building APIs with decorators, functional routers, or both together.
+SculptorTS is a TypeScript-first, Express-based framework for building APIs with decorator controllers, functional routers, or both together.
 
-The framework is split into small packages:
+The v0.3.x line introduces a package-aware architecture that is:
 
-- `@sculptor/core` for runtime startup
+- explicit
+- registry-aware
+- scanner-aware
+- AI-aware
+- DI-enabled
+- hybrid-friendly
+
+The framework is split into focused packages:
+
+- `@sculptor/core` for runtime startup, request context, registry flattening, and server bootstrapping
 - `@sculptor/di` for explicit dependency injection and package metadata
 - `@sculptor/router` for decorators and route assembly
 - `@sculptor/config` for config loading
 - `@sculptor/template-registry` for scaffold templates and generator assets
 - `@sculptor/paws` for logging with dog mode personalities
-- `@sculptor/cli` for scaffolding, generation, app commands, `sc install deps`, `sc update`, and `sc doctor`
+- `@sculptor/cli` for scaffolding, generation, diagnostics, sync, and app commands
 
 If you are new to the framework, read this file first, then move into the package docs linked below.
 
 ## Release Notes
 
-Current stable package line:
+Current v0.3.x line:
 
-- `@sculptor/config` `0.2.1`
-- `@sculptor/paws` `0.2.1`
-- `@sculptor/router` `0.2.5`
-- `@sculptor/di` `0.1.0`
-- `@sculptor/core` `0.2.3`
-- `@sculptor/cli` `0.2.4`
-- `@sculptor/template-registry` `0.1.6`
+- `@sculptor/core`
+- `@sculptor/router`
+- `@sculptor/config`
+- `@sculptor/paws`
+- `@sculptor/cli`
+- `@sculptor/template-registry`
+- `@sculptor/di` starts on `0.1.0`
 
-Deprecated ranges are documented in [CHANGELOG.md](CHANGELOG.md). The older releases remain listed for reference, but the stable line above is the recommended baseline for new apps.
+This line adds:
+
+- `@Package(...)` package indexes
+- `sculptor.packages.json` as a tracked framework artifact
+- explicit DI with `@Service()`, `@Repository()`, `@Middleware()`, and `@AutoInject()`
+- `sc doctor` for calm diagnostics
+- `sc agents` and `sc agents refresh` for `AGENTS.md`
+- package-aware generators and registry commands
+- exact package naming with no hidden singular/plural normalization
+- safer generated marker blocks for package index updates
+- `sc update` restricted to the globally installed `@sculptor/cli`
+- `req.ctx` as the default request context on Sculptor-bootstrapped apps
+
+Historical package ranges remain documented in [CHANGELOG.md](CHANGELOG.md).
 
 ## Documentation Map
 
 | Package | Purpose | Docs |
 | --- | --- | --- |
-| `@sculptor/cli` | Commands, scaffolding, generators, and test harness management | [packages/cli/README.md](packages/cli/README.md) |
-| `@sculptor/core` | App bootstrap, registry wiring, and runtime server startup | [packages/core/README.md](packages/core/README.md) |
+| `@sculptor/cli` | Commands, scaffolding, generators, diagnostics, sync, and test harness management | [packages/cli/README.md](packages/cli/README.md) |
+| `@sculptor/core` | App bootstrap, registry wiring, request context, and runtime server startup | [packages/core/README.md](packages/core/README.md) |
 | `@sculptor/di` | Explicit DI, package metadata, and the package composition contract | [packages/di/README.md](packages/di/README.md) |
-| `@sculptor/router` | Controller decorators, PATCH support, functional router scopes, and Express router assembly | [packages/router/README.md](packages/router/README.md) |
+| `@sculptor/router` | Controller decorators, hybrid routing, and Express router assembly | [packages/router/README.md](packages/router/README.md) |
 | `@sculptor/config` | Framework and runtime config loading, `.env` interpolation, and redaction | [packages/config/README.md](packages/config/README.md) |
 | `@sculptor/template-registry` | Template metadata, registry-backed templates, and generator assets | [packages/template-registry/README.md](packages/template-registry/README.md) |
 | `@sculptor/paws` | Logger utility with standard and dog mode output | [packages/paws/README.md](packages/paws/README.md) |
 
+## Package-First Architecture
+
+Package indexes are the primary composition contract in SculptorTS.
+
+Each package owns:
+
+- exports
+- runtime composition
+- scanner metadata
+- package metadata
+- rebuild metadata
+
+The package index lives at `src/<package>/index.ts` and is decorated with `@Package({...})`.
+
+Sculptor keeps runtime ownership lightweight:
+
+- `src/registry.ts` composes the app globally
+- `sculptor.packages.json` records package ownership and file tracking
+- the runtime flattens package registrations internally
+- generators update only the generated regions in package indexes
+
+The supported app styles remain:
+
+- functional
+- decorator
+- hybrid
+
+Packages are first-class, but they are still optional. Functional and unpackaged code continue to work.
+
 ## How The Framework Is Structured
 
-### `@sculptor/core` This is the core runtime
+### `@sculptor/core`
+
+This is the runtime entrypoint.
+
 What it does:
-- Starts the Express server
-- Loads config from `sculptor.json`, `props.json`, and `.env`
-- Mounts controllers, packages, and routers from the registry
-- Exposes request context, framework error hooks, and `bootstrapApp({ listen: false })`
-- Prints the listening port and a localhost URL
+
+- starts the Express server
+- loads config from `sculptor.json`, `props.json`, and `.env`
+- flattens package and registry composition into runtime arrays
+- exposes `req.ctx` as the default request context
+- exposes framework error hooks
+- supports `startApp({ listen: false })` for validation-only startup
 
 How it is used:
-- `src/main.ts` imports `startApp()` from `@sculptor/core`
-- The app imports `registry` from `src/registry.ts`
-- The runtime starts from the app root
 
-This solves:
-- You do not need to hand-wire Express bootstrapping every time
-- Startup behavior stays consistent across apps
+- `src/main.ts` imports `startApp()` from `@sculptor/core`
+- the app imports `registry` from `src/registry.ts`
+- the runtime starts from the app root
 
 You will find it here:
+
 - [packages/core/README.md](packages/core/README.md)
 - [packages/core/src/runtime.ts](packages/core/src/runtime.ts)
 - [packages/core/src/index.ts](packages/core/src/index.ts)
 
-### `@sculptor/router` This is the router layer
+### `@sculptor/di`
+
+This is the explicit DI layer.
+
 What it does:
-- Provides `@Controller`, `@Get`, `@Patch`, `@Post`, `@Put`, `@Delete`, and `@Use`
-- Turns decorated classes into Express routes
-- Supports controller-based, hybrid, and Sculptor-native functional routing
+
+- defines `@Service()`, `@Repository()`, `@Middleware()`, `@Package()`, and `@AutoInject()`
+- resolves singleton dependencies lazily
+- supports constructor and property injection
+- detects circular dependencies
+- exposes package metadata for package-aware runtime composition
 
 How it is used:
-- Decorate a class with `@Controller("/health")`
-- Decorate methods with `@Get("/")` or other HTTP verbs
-- Add `@Use()` at class or method level for middleware
 
-This solves:
-- You can write routes in a structured, class-based style
-- Middleware stays colocated with the route it affects
+- decorate injectables with `@Service()` or `@Repository()`
+- mark package index classes with `@Package({...})`
+- inject dependencies only where `@AutoInject(...)` is present
 
 You will find it here:
+
+- [packages/di/README.md](packages/di/README.md)
+- [packages/di/src/index.ts](packages/di/src/index.ts)
+
+### `@sculptor/router`
+
+This is the router layer.
+
+What it does:
+
+- provides `@Controller`, `@Get`, `@Patch`, `@Post`, `@Put`, `@Delete`, and `@Use`
+- turns decorated classes into Express routes
+- supports controller-based, hybrid, and Sculptor-native functional routing
+
+How it is used:
+
+- decorate a class with `@Controller("/health")`
+- decorate methods with `@Get("/")` or other HTTP verbs
+- add `@Use()` at class or method level for middleware
+
+You will find it here:
+
 - [packages/router/README.md](packages/router/README.md)
 - [packages/router/src/index.ts](packages/router/src/index.ts)
 - [packages/router/src/router.ts](packages/router/src/router.ts)
 
-### `@sculptor/config` This is the config system
+### `@sculptor/config`
+
+This is the config system.
+
 What it does:
-- Reads `sculptor.json` for framework behavior
-- Reads `props.json` for runtime settings
-- Loads `.env` values, resolves `${VAR}` interpolation, and redacts sensitive config when needed
-- Merges framework defaults, project config, runtime config, and overrides in a predictable order
-- Exposes direct lookup helpers
 
-How it is used:
-- The runtime reads the port and prefix from config
-- The CLI reads scaffolding and test-generation settings from config
-
-This solves:
-- Framework behavior is declared in files instead of hard-coded in source
-- App-level overrides are easy to reason about
+- reads `sculptor.json` for framework behavior
+- reads `props.json` for runtime settings
+- loads `.env` values, resolves `${VAR}` interpolation, and redacts sensitive config when needed
+- merges framework defaults, project config, runtime config, and overrides in a predictable order
+- exposes direct lookup helpers
 
 You will find it here:
+
 - [packages/config/README.md](packages/config/README.md)
 - [packages/config/src/config.ts](packages/config/src/config.ts)
 
-### `@sculptor/paws` This is the logger
+### `@sculptor/paws`
+
+This is the logger.
+
 What it does:
-- Prints standard logs, system logs, warnings, and errors
-- Supports dog mode with Bruno, Coki, and Dodie personalities
-- Reads `logging.enabled` and `logging.dogMode` from `sculptor.json`
 
-How it is used:
-- `paws.log()` for regular logs
-- `paws.system()` for system messages
-- `paws.warn()` for warnings
-- `paws.error()` for errors
-- `paws.boot()` for the dog-mode boot message
-
-This solves:
-- App output stays consistent and lightweight
-- Logging can feel expressive without turning noisy
+- prints standard logs, system logs, warnings, and errors
+- supports dog mode with Bruno, Coki, and Dodie personalities
+- reads `logging.enabled` and `logging.dogMode` from `sculptor.json`
 
 You will find it here:
+
 - [packages/paws/README.md](packages/paws/README.md)
 - [packages/paws/src/paws.ts](packages/paws/src/paws.ts)
 
-### `@sculptor/cli` This is the CLI
+### `@sculptor/cli`
+
+This is the CLI.
+
 What it does:
-- Creates new apps
-- Runs dev, build, lint, test, and generate commands
-- Replays scaffold dependency installs with `sc install deps` / `sc i deps`
-- Updates only the globally installed `@sculptor/cli` with `sc update`
-- Runs project and registry diagnostics with `sc doctor`
-- Reads and writes config with `sc config get`, `sc config set`, and `sc config list`
-- Writes the scaffolded app files
-- Writes a scaffolded `.gitignore` with common Node and TypeScript ignores
-- Generates matching test files when TDD generation is enabled
-- Loads `@sculptor/template-registry` lazily at runtime and can recover by prompting to install it when global installs are incomplete
+
+- creates new apps
+- generates package-aware and unpackaged resources
+- runs dev, build, lint, test, sync, doctor, and package commands
+- maintains `sculptor.packages.json`
+- generates `AGENTS.md`
+- updates only the globally installed `@sculptor/cli` with `sc update`
+- recovers missing template-registry installs when global installs are incomplete
+
+Core command families:
+
+- `sc new`
+- `sc agents` / `sc agents refresh`
+- `sc g` / `sc generate`
+- `sc pkg` / `sc package`
+- `sc ls` / `sc list`
+- `sc reg` / `sc register` / `sc r`
+- `sc ureg` / `sc unreg` / `sc unregister` / `sc ur`
+- `sc rm` / `sc remove`
+- `sc sync`
+- `sc doctor`
+- `sc update`
+
+Package targeting flags:
+
+- `-p`
+- `--p`
+- `-pkg`
+- `--pkg`
+- `-package`
+- `--package`
 
 How it is used:
-- Run `sc new <app>`
-- Move into the app root
-- Run `sc dev`, `sc build`, `sc test`, or `sc generate`
 
-This solves:
-- New apps start with a consistent file structure
-- Generated code and generated tests stay aligned
-- App setup can be repaired if `npm i` was interrupted
-- Global CLI maintenance stays separate from app-local commands
+- run `sc new <app>`
+- move into the app root
+- run `sc dev`, `sc build`, `sc test`, `sc sync`, or `sc doctor`
 
 You will find it here:
+
 - [packages/cli/README.md](packages/cli/README.md)
 - [packages/cli/src/cli.ts](packages/cli/src/cli.ts)
 - [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts)
 
-### This is the test harness
+### Test Harness
+
 What it does:
-- Generates `src/tests/main.spec.ts`
-- Generates resource specs such as `user.controller.spec.ts`
-- Maintains `src/tests/registry.ts`
-- Maintains `src/tests/runner.ts`
+
+- generates `src/tests/main.spec.ts`
+- generates resource specs such as `user.controller.spec.ts`
+- maintains `src/tests/registry.ts`
+- maintains `src/tests/runner.ts`
 
 How it is used:
-- Set `testing.generate: true` in `sculptor.json`
-- Generate resources with `sc g ...`
-- Run `sc test`
 
-This solves:
-- You get a predictable test layout
-- Generated code has generated tests from the start
+- set `testing.generate: true` in `sculptor.json`
+- generate resources with `sc g ...`
+- run `sc test`
 
 You will find it here:
+
 - [packages/cli/README.md](packages/cli/README.md)
 - [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts)
 
@@ -179,60 +269,97 @@ You will find it here:
 ### `sculptor.json`
 
 What it does:
-- Declares framework behavior
+
+- declares framework behavior
 
 How it is used:
-- Routing style, dev server, and test generation are read from here
 
-This solves:
-- The framework knows how the app should behave before it starts
+- routing style, dev server, and test generation are read from here
 
 You will find it here:
+
 - [packages/config/README.md](packages/config/README.md)
 - [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts)
 
 ### `props.json`
 
 What it does:
-- Declares runtime settings like port and router prefix
+
+- declares runtime settings like port and router prefix
 
 How it is used:
+
 - `app.port` and `app.prefix` are consumed by the runtime
 
-This solves:
-- You can change startup behavior without changing code
-
 You will find it here:
+
 - [packages/config/README.md](packages/config/README.md)
 - [packages/core/src/runtime.ts](packages/core/src/runtime.ts)
 
 ### `src/registry.ts`
 
 What it does:
-- Composes packages, controllers, services, repositories, middlewares, and routers for the app
+
+- composes packages, controllers, services, repositories, middlewares, and routers for the app
 
 How it is used:
+
 - `startApp()` reads the registry
 
-This solves:
-- The runtime has one stable place to discover app routes
-
 You will find it here:
+
 - [packages/core/README.md](packages/core/README.md)
 - [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts)
+
+### `src/<package>/index.ts`
+
+What it does:
+
+- owns the package contract
+- exports package-local symbols
+- declares `@Package({...})`
+- describes the package for scanners, generators, rebuilds, and runtime composition
+
+How it is used:
+
+- the CLI updates generated regions in this file
+- the scanner reads package metadata from this file
+- the runtime consumes package composition through the registry
+
+### `sculptor.packages.json`
+
+What it does:
+
+- tracks package names, paths, index paths, and owned files
+
+How it is used:
+
+- generated and synced by the CLI
+- used for package validation, listing, and rebuild-ready metadata
+
+### `AGENTS.md`
+
+What it does:
+
+- gives AI coding agents a concise framework briefing
+
+How it is used:
+
+- generated by `sc agents`
+- refreshed by `sc agents refresh`
 
 ### `src/main.ts`
 
 What it does:
-- Bootstraps the app
+
+- bootstraps the app
 
 How it is used:
-- Calls `startApp({ registry, rootDir })`
 
-This solves:
-- The app has a single executable entrypoint
+- calls `startApp({ registry, rootDir })`
 
 You will find it here:
+
 - [packages/core/README.md](packages/core/README.md)
 - [packages/cli/src/scaffold.ts](packages/cli/src/scaffold.ts)
 
@@ -241,17 +368,25 @@ You will find it here:
 | If you do this | SculptorTS does this |
 | --- | --- |
 | Run `sc new <app>` | Creates a new scaffolded app and installs dependencies |
-| Run `sc install deps` | Replays the app dependency install sequence after an interrupted setup |
-| Run `sc update` outside an app | Updates the globally installed Sculptor CLI |
+| Run `sc agents` | Generates `AGENTS.md` |
+| Run `sc agents refresh` | Regenerates `AGENTS.md` |
+| Run `sc update` outside an app | Updates the globally installed `@sculptor/cli` only |
 | Run `sc doctor` inside or outside an app | Prints diagnostics and compatibility guidance |
+| Run `sc sync` | Validates and refreshes package registry metadata |
+| Run `sc ls` or `sc list` | Prints package and tree diagnostics |
+| Run `sc pkg <name>` or `sc package <name>` | Prints package diagnostics |
+| Run `sc reg` / `sc register` / `sc r` | Registers a file in the package registry |
+| Run `sc ureg` / `sc unreg` / `sc unregister` / `sc ur` | Unregisters a file from the package registry |
+| Run `sc rm` / `sc remove` | Deletes a file and syncs the registry |
 | Run `sc dev` inside an app root | Starts the app from source |
 | Run `sc start` with a build present | Uses `dist/main.js` unless `--watch` is set |
-| Run `sc start --watch` | Switches to the dev path |
-| Run `sc build` | Compiles the app with the app-local TypeScript config |
+| Run `sc build` | Validates the package registry, then compiles the app with the app-local TypeScript config |
 | Run `sc lint` | Runs ESLint from the app root |
 | Run `sc test` | Runs the generated test suite if present |
-| Run `sc generate controller user` | Writes a controller by default and can opt into paired functional files with `--functional` |
-| Run `sc generate route user` | Writes paired `*.route.ts` and `*.route.handler.ts` files |
+| Run `sc g c user` | Writes a controller by default and can opt into paired functional files with `--functional` |
+| Run `sc g r user` | Writes paired `*.route.ts` and `*.route.handler.ts` files |
+| Run `sc g pkg user` | Writes a package index and package-local resources |
+| Run `sc g c user in src/app/users` | Writes into a custom path |
 | Run `sc config get logging` | Prints a config value |
 | Run `sc config set logging.dogMode=false` | Updates the app config while preserving formatting when possible |
 | Run `sc config list` | Prints the flattened merged config |
@@ -272,6 +407,7 @@ Then:
 
 ```bash
 sc g c user
+sc sync
 sc test
 ```
 
@@ -289,8 +425,6 @@ The test harness automatically rewrites itself when new generated specs are adde
 
 ## Runtime Output
 
-The startup banner is no longer printed by the runtime.
-
 The runtime prints:
 
 ```text
@@ -307,8 +441,12 @@ The CLI has two groups of commands:
 ### Allowed from outside a Sculptor app
 
 - `sc new`
+- `sc agents`
+- `sc agents refresh`
 - `sc help`
 - `sc version`
+- `sc doctor`
+- `sc update`
 
 ### Allowed only inside a Sculptor app
 
@@ -318,6 +456,14 @@ The CLI has two groups of commands:
 - `sc lint`
 - `sc test`
 - `sc generate`
+- `sc g`
+- `sc sync`
+- `sc ls`
+- `sc pkg`
+- `sc package`
+- `sc reg`
+- `sc ureg`
+- `sc rm`
 
 If a restricted command runs without `sculptor.json` in the current directory, the CLI stops immediately.
 
@@ -329,7 +475,8 @@ If you want to learn the framework in depth:
 2. Read [packages/core/README.md](packages/core/README.md) for runtime behavior.
 3. Read [packages/router/README.md](packages/router/README.md) for decorator and router behavior.
 4. Read [packages/config/README.md](packages/config/README.md) for config semantics.
-5. Read [packages/paws/README.md](packages/paws/README.md) for logger behavior and dog mode output.
+5. Read [packages/di/README.md](packages/di/README.md) for explicit DI and package contracts.
+6. Read [packages/paws/README.md](packages/paws/README.md) for logger behavior and dog mode output.
 
 ## License
 
