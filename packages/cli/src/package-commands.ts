@@ -1,18 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { loadConfig } from "@sculptor/config";
-
 import {
   buildPackageRecord,
   getOwningPackage,
   loadPackageRegistry,
-  removeFileFromRegistry,
+  deleteFileFromRegistry,
   savePackageRegistry,
   scanPackageRegistry,
   syncPackageRegistry,
   syncRootRegistryForPackages,
   updatePackageIndexForRecord,
+  unregisterFileFromRegistry,
   upsertFileIntoRegistry,
   type PackageRecord
 } from "./package-registry.js";
@@ -98,13 +97,6 @@ export const stripPackageFlag = (args: string[]): string[] => {
   return result;
 };
 
-const toPascalCase = (value: string): string =>
-  value
-    .split(/[^a-zA-Z0-9]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join("");
-
 const getPackageByName = (
   registry: ReturnType<typeof loadPackageRegistry>,
   packageName: string
@@ -123,18 +115,19 @@ const comparePackageFiles = (
   messages: string[],
   packageName: string
 ): void => {
-  const detectedFiles = new Set((detected?.files ?? []).map((entry) => entry.path));
-  const registeredFiles = new Set((registered?.files ?? []).map((entry) => entry.path));
+  const detectedFiles = new Map((detected?.files ?? []).map((entry) => [entry.path, entry]));
+  const registeredFiles = new Map((registered?.files ?? []).map((entry) => [entry.path, entry]));
 
-  for (const file of registeredFiles) {
-    if (!detectedFiles.has(file)) {
-      messages.push(`Missing registered file: ${file}`);
+  for (const [filePath, fileRecord] of registeredFiles) {
+    if (fileRecord.registered && !detectedFiles.has(filePath)) {
+      messages.push(`Missing registered file: ${filePath}`);
     }
   }
 
-  for (const file of detectedFiles) {
-    if (!registeredFiles.has(file)) {
-      messages.push(`Detected unregistered file: ${file}`);
+  for (const [filePath, fileRecord] of detectedFiles) {
+    const registryRecord = registeredFiles.get(filePath);
+    if (!registryRecord || !registryRecord.registered || !fileRecord.registered) {
+      messages.push(`Detected unregistered file: ${filePath}`);
     }
   }
 
@@ -166,18 +159,19 @@ export const validatePackageRegistryState = (rootDir: string, packageName?: stri
     comparePackageFiles(detected, registered, messages, registered.name);
   }
 
-  const detectedFileSet = new Set(scan.files.map((file) => file.path));
-  const registeredFileSet = new Set(registry.files.map((file) => file.path));
+  const detectedFileMap = new Map(scan.files.map((file) => [file.path, file]));
+  const registeredFileMap = new Map(registry.files.map((file) => [file.path, file]));
 
-  for (const file of registeredFileSet) {
-    if (!detectedFileSet.has(file)) {
-      messages.push(`Missing registered file: ${file}`);
+  for (const [filePath, fileRecord] of registeredFileMap) {
+    if (fileRecord.registered && !detectedFileMap.has(filePath)) {
+      messages.push(`Missing registered file: ${filePath}`);
     }
   }
 
-  for (const file of detectedFileSet) {
-    if (!registeredFileSet.has(file)) {
-      messages.push(`Detected unregistered file: ${file}`);
+  for (const [filePath, fileRecord] of detectedFileMap) {
+    const registryRecord = registeredFileMap.get(filePath);
+    if (!registryRecord || !registryRecord.registered || !fileRecord.registered) {
+      messages.push(`Detected unregistered file: ${filePath}`);
     }
   }
 
@@ -211,6 +205,25 @@ interface ResolvedFileTarget {
   package?: PackageRecord;
 }
 
+const generatedSuffixByKind: Record<string, string> = {
+  controller: ".controller.ts",
+  c: ".controller.ts",
+  service: ".service.ts",
+  s: ".service.ts",
+  repository: ".repository.ts",
+  repo: ".repository.ts",
+  middleware: ".middleware.ts",
+  mw: ".middleware.ts",
+  module: ".module.ts",
+  mo: ".module.ts",
+  m: ".module.ts",
+  dto: ".dto.ts",
+  type: ".type.ts",
+  t: ".type.ts",
+  route: ".route.ts",
+  r: ".route.ts"
+};
+
 const collectKnownFiles = (
   rootDir: string
 ): ResolvedFileTarget[] => {
@@ -227,6 +240,23 @@ const collectKnownFiles = (
       path: file.path
     }))
   ];
+};
+
+const resolveGeneratedFileTarget = (rootDir: string, kindInput: string, name: string): ResolvedFileTarget | undefined => {
+  const kindKey = kindInput.split(/[\\/]/).filter(Boolean).pop()?.toLowerCase();
+  const suffix = kindKey ? generatedSuffixByKind[kindKey] : undefined;
+
+  if (!suffix) {
+    return undefined;
+  }
+
+  const candidate = `${name}${suffix}`;
+
+  try {
+    return resolveFileTarget(rootDir, candidate);
+  } catch {
+    return undefined;
+  }
 };
 
 const resolveFileTarget = (rootDir: string, fileInput: string): ResolvedFileTarget => {
@@ -287,16 +317,20 @@ const packageTreeLines = (record: PackageRecord | undefined, registered: Package
 
   lines.push(`${source.name} (${source.path})`);
 
-  const detectedFiles = new Set((record?.files ?? []).map((entry) => entry.path));
-  const registeredFiles = new Set((registered?.files ?? []).map((entry) => entry.path));
-  const allFiles = [...new Set([...detectedFiles, ...registeredFiles])].sort();
+  const detectedFiles = new Map((record?.files ?? []).map((entry) => [entry.path, entry]));
+  const registeredFiles = new Map((registered?.files ?? []).map((entry) => [entry.path, entry]));
+  const allFiles = [...new Set([...detectedFiles.keys(), ...registeredFiles.keys()])].sort();
 
   for (const file of allFiles) {
-    const marker = detectedFiles.has(file) && registeredFiles.has(file)
+    const detectedRecord = detectedFiles.get(file);
+    const registeredRecord = registeredFiles.get(file);
+    const marker = detectedRecord?.registered && registeredRecord?.registered
       ? "✔"
-      : detectedFiles.has(file)
+      : detectedRecord?.registered
         ? "⚠"
-        : "✖";
+        : registeredRecord?.registered
+          ? "✖"
+          : "⚠";
     lines.push(`  ${marker} ${path.posix.basename(file)}`);
   }
 
@@ -323,9 +357,7 @@ export const handleLsCommand = (args: string[], context: PackageCommandContext):
     }
 
     if (!packageName) {
-      const unpackaged = scan.files.filter((file) =>
-        !Object.values(registry.packages).some((record) => record.files.some((entry) => entry.path === file.path))
-      );
+      const unpackaged = scan.files.filter((file) => !file.registered);
 
       if (unpackaged.length > 0) {
         context.log("Unpackaged files");
@@ -418,15 +450,51 @@ export const handleRegisterCommand = async (
   context: PackageCommandContext
 ): Promise<void> => {
   const rootDir = ensureAppRoot(context.cwd, `sc ${command}`);
-  const [fileInput] = args;
+  const [primaryInput, secondaryInput] = args;
 
-  if (!fileInput) {
+  if (!primaryInput) {
     context.error(`Usage: sc ${command} <file>`);
     process.exit(1);
   }
 
-  if (command === "reg" && (fileInput === "pkg" || fileInput === "package")) {
-    const packageName = args[1];
+  if (primaryInput === "pkg" || primaryInput === "package") {
+    const packageName = secondaryInput;
+
+    if (command === "rm") {
+      if (!packageName) {
+        context.error(`Usage: sc rm pkg <name>`);
+        process.exit(1);
+      }
+
+      const registry = syncPackageRegistry(rootDir);
+      const record = getPackageByName(registry, packageName);
+      if (!record) {
+        context.error(`Package "${packageName}" is not registered.`);
+        process.exit(1);
+      }
+
+      const answer = await context.prompt(`Remove package "${packageName}" and delete ${record.path}? (y/n)`, "n");
+      if (!answer.trim().toLowerCase().startsWith("y")) {
+        context.log("Package removal cancelled.");
+        return;
+      }
+
+      fs.rmSync(path.join(rootDir, record.path), { recursive: true, force: true });
+      const registryKey = getPackageRegistryKey(registry, packageName);
+      if (registryKey) {
+        delete registry.packages[registryKey];
+      }
+      savePackageRegistry(rootDir, registry);
+      syncRootRegistryForPackages(rootDir);
+      context.log(`Removed package "${packageName}".`);
+      return;
+    }
+
+    if (command === "ureg") {
+      context.error("Package unregistering from registry.ts is not supported yet. Use sc pkg rm <name> to remove the package and its registry entry.");
+      return;
+    }
+
     if (!packageName) {
       context.error(`Usage: sc reg pkg <name>`);
       process.exit(1);
@@ -444,12 +512,12 @@ export const handleRegisterCommand = async (
     return;
   }
 
-  if (command === "ureg" && (fileInput === "pkg" || fileInput === "package")) {
-    context.error("Package unregistering from registry.ts is not supported yet. Use sc pkg rm <name> to remove the package and its registry entry.");
-    return;
-  }
+  const generatedTarget = secondaryInput ? resolveGeneratedFileTarget(rootDir, primaryInput, secondaryInput) : undefined;
+  const fileInput = generatedTarget
+    ? `${secondaryInput}${generatedSuffixByKind[primaryInput.split(/[\\/]/).filter(Boolean).pop()?.toLowerCase() ?? ""] ?? ""}`
+    : primaryInput;
 
-  const resolvedTarget = resolveFileTarget(rootDir, fileInput);
+  const resolvedTarget = generatedTarget ?? resolveFileTarget(rootDir, fileInput);
   const filePath = resolvedTarget.path;
   const fileAbs = path.join(rootDir, filePath);
   const registry = syncPackageRegistry(rootDir);
@@ -475,8 +543,10 @@ export const handleRegisterCommand = async (
 
   if (command === "reg") {
     upsertFileIntoRegistry(registry, filePath);
+  } else if (command === "rm") {
+    deleteFileFromRegistry(registry, filePath);
   } else {
-    removeFileFromRegistry(registry, filePath);
+    unregisterFileFromRegistry(registry, filePath);
   }
 
   savePackageRegistry(rootDir, registry);
@@ -501,29 +571,5 @@ export const createPackageFromName = (
 ): PackageRecord => buildPackageRecord(rootDir, name, explicitPath);
 
 export const ensureRootRegistryForPackages = (rootDir: string): void => {
-  const srcRoot = String(loadConfig(rootDir).framework.project?.srcRoot ?? "src");
-  const registryPath = path.join(rootDir, srcRoot, "registry.ts");
-
-  if (fs.existsSync(registryPath)) {
-    return;
-  }
-
-  const registry = loadPackageRegistry(rootDir);
-  const packageRecords = Object.values(registry.packages);
-  const packageEntries = packageRecords.map((record) => `${toPascalCase(record.name)}Package`);
-  const imports = packageRecords
-    .map((record) => {
-      const relativePath = record.path.startsWith(`${srcRoot}/`)
-        ? record.path.slice(`${srcRoot}/`.length)
-        : record.path;
-      return `import { ${toPascalCase(record.name)}Package } from "./${relativePath}/index.js";`;
-    })
-    .join("\n");
-
-  fs.mkdirSync(path.dirname(registryPath), { recursive: true });
-  fs.writeFileSync(
-    registryPath,
-    `${imports}${imports ? "\n\n" : ""}export const registry = {\n  packages: [${packageEntries.join(", ")}],\n  controllers: [],\n  services: [],\n  repositories: [],\n  middlewares: [],\n  routes: []\n};\n`,
-    "utf8"
-  );
+  syncRootRegistryForPackages(rootDir);
 };

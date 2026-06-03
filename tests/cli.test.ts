@@ -550,6 +550,31 @@ describe("cli", () => {
     expect(output).toContain("Removed src/app/user/user.service.ts");
   });
 
+  it("supports removing a package through the rm pkg alias", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    const cwd = projectRoot;
+
+    await runCli(["node", "sc", "g", "pkg", "user"], {
+      cwd,
+      log: () => undefined,
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const logs: string[] = [];
+    await runCli(["node", "sc", "rm", "pkg", "user"], {
+      cwd,
+      prompt: async () => "y",
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    expect(logs.join("\n")).toContain('Removed package "user".');
+    expect(fs.existsSync(path.join(cwd, "src", "app", "user"))).toBe(false);
+    expect(fs.readFileSync(path.join(cwd, "src", "registry.ts"), "utf8")).not.toContain("UserPackage");
+  });
+
   it("generates AGENTS.md with package-aware guidance", async () => {
     const { projectRoot } = await scaffoldFixture();
     const cwd = projectRoot;
@@ -714,6 +739,14 @@ describe("cli", () => {
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
+    await runCli(["node", "sc", "reg", "c", "profile"], {
+      cwd,
+      prompt: async () => "y",
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
     expect(fs.existsSync(path.join(cwd, "src/app/controllers/profile.controller.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/alias/alias.controller.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/services/profile.service.ts"))).toBe(false);
@@ -751,6 +784,9 @@ describe("cli", () => {
     expect(logs.join("\n")).toContain('Generated middleware "auth"');
     expect(logs.join("\n")).toContain('Generated type "user"');
     expect(logs.join("\n")).toContain('Generated route "profile"');
+    expect(logs.join("\n")).toContain(
+      'Registering "profile.controller.ts" at path = src/app/controllers/profile.controller.ts'
+    );
   });
 
   it("does not generate test files when tdd is disabled", async () => {

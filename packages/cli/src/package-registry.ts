@@ -18,6 +18,8 @@ export type PackageFileType =
 export interface PackageFileRecord {
   type: PackageFileType;
   path: string;
+  registered: boolean;
+  tags: string[];
 }
 
 export interface PackageRecord {
@@ -121,6 +123,25 @@ const inferFileType = (filePath: string): PackageFileType => {
 
   return "type";
 };
+
+const createPackageFileRecord = (
+  type: PackageFileType,
+  filePath: string,
+  registered = false,
+  tags: string[] = []
+): PackageFileRecord => ({
+  type,
+  path: normalizeRelativePath(filePath),
+  registered,
+  tags: [...tags]
+});
+
+const normalizeFileRecord = (record: Partial<PackageFileRecord> & { path: string }): PackageFileRecord => ({
+  type: record.type ?? inferFileType(record.path),
+  path: normalizeRelativePath(record.path),
+  registered: record.registered ?? true,
+  tags: Array.isArray(record.tags) ? record.tags.map((tag) => String(tag)) : []
+});
 
 const inferSymbolFromFile = (filePath: string): string => {
   const base = path.posix.basename(filePath).replace(/\.ts$/, "");
@@ -281,8 +302,16 @@ export const loadPackageRegistry = (rootDir: string): PackageRegistryArtifact =>
   }
 
   return {
-    packages: data.packages ?? {},
-    files: data.files ?? []
+    packages: Object.fromEntries(
+      Object.entries(data.packages ?? {}).map(([name, record]) => [
+        name,
+        {
+          ...record,
+          files: (record.files ?? []).map((file) => normalizeFileRecord(file))
+        }
+      ])
+    ),
+    files: (data.files ?? []).map((file) => normalizeFileRecord(file))
   };
 };
 
@@ -293,6 +322,19 @@ export const savePackageRegistry = (rootDir: string, registry: PackageRegistryAr
 export const scanPackageRegistry = (rootDir: string): PackageScanResult => {
   const srcRoot = getSrcRoot(rootDir);
   const sourceRoot = path.join(rootDir, srcRoot);
+  const existingRegistry = loadPackageRegistry(rootDir);
+  const existingFileState = new Map<string, PackageFileRecord>();
+
+  for (const record of Object.values(existingRegistry.packages)) {
+    for (const file of record.files) {
+      existingFileState.set(file.path, file);
+    }
+  }
+
+  for (const file of existingRegistry.files) {
+    existingFileState.set(file.path, file);
+  }
+
   const packages: Array<Omit<PackageRecord, "files"> & { files: PackageFileRecord[] }> = [];
 
   const visit = (dir: string): void => {
@@ -338,13 +380,19 @@ export const scanPackageRegistry = (rootDir: string): PackageScanResult => {
       .filter((pkg) => fileBelongsToPackage(pkg.path, file))
       .sort((left, right) => right.path.length - left.path.length)[0];
 
-    const nextFile: PackageFileRecord = {
-      type: inferFileType(file),
-      path: file
-    };
+    const existingFile = existingFileState.get(file);
+    const nextFile = createPackageFileRecord(
+      inferFileType(file),
+      file,
+      owner ? existingFile?.registered ?? true : existingFile?.registered ?? false,
+      existingFile?.tags ?? []
+    );
 
     if (owner) {
-      owner.files.push(nextFile);
+      owner.files.push({
+        ...nextFile,
+        registered: existingFile?.registered ?? true
+      });
       ownedFiles.add(file);
     }
   }
@@ -361,7 +409,9 @@ export const scanPackageRegistry = (rootDir: string): PackageScanResult => {
 
     unpackaged.push({
       type: inferFileType(file),
-      path: file
+      path: file,
+      registered: existingFileState.get(file)?.registered ?? false,
+      tags: existingFileState.get(file)?.tags ?? []
     });
   }
 
@@ -392,7 +442,7 @@ const derivePackageIndexView = (record: PackageRecord): {
   exports: string;
   packageBlock: string;
 } => {
-  const ownedFiles = record.files.filter((file) => file.path !== record.index);
+  const ownedFiles = record.files.filter((file) => file.path !== record.index && file.registered);
   const controllerFiles = ownedFiles.filter((file) => file.path.endsWith(".controller.ts"));
   const serviceFiles = ownedFiles.filter((file) => file.path.endsWith(".service.ts"));
   const repositoryFiles = ownedFiles.filter((file) => file.path.endsWith(".repository.ts"));
@@ -479,7 +529,7 @@ export const inferPackagePath = (rootDir: string, packageName: string, explicitP
     return normalizeRelativePath(path.posix.join(normalizeRelativePath(explicitPath), packageFolder));
   }
 
-  return normalizeRelativePath(path.posix.join(srcRoot, packageFolder));
+  return normalizeRelativePath(path.posix.join(srcRoot, "app", packageFolder));
 };
 
 export const inferPackageIndexPath = (packagePath: string): string =>
@@ -494,11 +544,11 @@ export const buildPackageRecord = (
   const index = inferPackageIndexPath(packagePath);
   const normalizedPackageName = normalizeRelativePath(packageName);
   const files: PackageFileRecord[] = [
-    { type: "controller", path: normalizeRelativePath(path.posix.join(packagePath, `${normalizedPackageName}.controller.ts`)) },
-    { type: "service", path: normalizeRelativePath(path.posix.join(packagePath, `${normalizedPackageName}.service.ts`)) },
-    { type: "repository", path: normalizeRelativePath(path.posix.join(packagePath, `${normalizedPackageName}.repository.ts`)) },
-    { type: "dto", path: normalizeRelativePath(path.posix.join(packagePath, `${normalizedPackageName}.dto.ts`)) },
-    { type: "type", path: normalizeRelativePath(path.posix.join(packagePath, `${normalizedPackageName}.types.ts`)) }
+    createPackageFileRecord("controller", path.posix.join(packagePath, `${normalizedPackageName}.controller.ts`), true),
+    createPackageFileRecord("service", path.posix.join(packagePath, `${normalizedPackageName}.service.ts`), true),
+    createPackageFileRecord("repository", path.posix.join(packagePath, `${normalizedPackageName}.repository.ts`), true),
+    createPackageFileRecord("dto", path.posix.join(packagePath, `${normalizedPackageName}.dto.ts`), true),
+    createPackageFileRecord("type", path.posix.join(packagePath, `${normalizedPackageName}.types.ts`), true)
   ];
 
   return {
@@ -529,72 +579,78 @@ const renderPackageRegistryImport = (srcRoot: string, record: PackageRecord): st
   )}";`;
 };
 
-const renderRegistryRootFile = (srcRoot: string, records: PackageRecord[]): string => {
-  const imports = records.map((record) => renderPackageRegistryImport(srcRoot, record)).join("\n");
-  const packageEntries = records.map((record) => `${toPascalCase(record.name)}Package`).join(", ");
+const renderDirectRegistryImport = (srcRoot: string, file: PackageFileRecord): string | undefined => {
+  if (!["controller", "service", "repository", "middleware", "route"].includes(file.type)) {
+    return undefined;
+  }
 
-  return `${imports}${imports ? "\n\n" : ""}export const registry = {\n  packages: [${packageEntries}],\n  controllers: [],\n  routes: [],\n  services: [],\n  repositories: [],\n  middlewares: []\n};\n`;
+  const sourcePath = file.path.startsWith(`${srcRoot}/`)
+    ? file.path.slice(`${srcRoot}/`.length)
+    : file.path;
+  const symbol = inferSymbolFromFile(file.path);
+
+  return `import { ${symbol} } from "./${normalizeRelativePath(
+    path.posix.join(sourcePath.replace(/\.ts$/, ".js"))
+  )}";`;
+};
+
+const renderRegistryRootFile = (rootDir: string, registry: PackageRegistryArtifact): string => {
+  const srcRoot = getSrcRoot(rootDir);
+  const packageRecords = Object.values(registry.packages).sort((left, right) =>
+    left.name.localeCompare(right.name)
+  );
+  const directFiles = registry.files
+    .filter((file) => file.registered)
+    .sort((left, right) => left.path.localeCompare(right.path));
+  const packageImports = packageRecords.map((record) => renderPackageRegistryImport(srcRoot, record));
+  const directImports = directFiles
+    .map((file) => renderDirectRegistryImport(srcRoot, file))
+    .filter((value): value is string => Boolean(value));
+  const directControllers = directFiles
+    .filter((file) => file.type === "controller")
+    .map((file) => inferSymbolFromFile(file.path));
+  const directServices = directFiles
+    .filter((file) => file.type === "service")
+    .map((file) => inferSymbolFromFile(file.path));
+  const directRepositories = directFiles
+    .filter((file) => file.type === "repository")
+    .map((file) => inferSymbolFromFile(file.path));
+  const directMiddlewares = directFiles
+    .filter((file) => file.type === "middleware")
+    .map((file) => inferSymbolFromFile(file.path));
+  const directRoutes = directFiles
+    .filter((file) => file.type === "route")
+    .map((file) => inferSymbolFromFile(file.path));
+  const packageEntries = packageRecords.map((record) => `${toPascalCase(record.name)}Package`);
+
+  return `/**
+ * @generated true
+ */
+${[...packageImports, ...directImports].join("\n")}
+
+export const registry = {
+  packages: [${packageEntries.join(", ")}],
+  controllers: [${directControllers.join(", ")}],
+  routes: [${directRoutes.join(", ")}],
+  services: [${directServices.join(", ")}],
+  repositories: [${directRepositories.join(", ")}],
+  middlewares: [${directMiddlewares.join(", ")}]
+};
+`;
 };
 
 export const syncRootRegistryForPackages = (rootDir: string): string => {
   const srcRoot = getSrcRoot(rootDir);
   const registryPath = path.join(rootDir, srcRoot, "registry.ts");
   const registry = loadPackageRegistry(rootDir);
-  const packageRecords = Object.values(registry.packages).sort((left, right) =>
-    left.name.localeCompare(right.name)
-  );
 
-  if (packageRecords.length === 0 && !fs.existsSync(registryPath)) {
+  if (Object.keys(registry.packages).length === 0 && registry.files.length === 0 && !fs.existsSync(registryPath)) {
     return registryPath;
   }
 
   fs.mkdirSync(path.dirname(registryPath), { recursive: true });
-
-  if (!fs.existsSync(registryPath)) {
-    const next = renderRegistryRootFile(srcRoot, packageRecords);
-    fs.writeFileSync(registryPath, next, "utf8");
-    return registryPath;
-  }
-
-  const current = fs.readFileSync(registryPath, "utf8");
-  const packageImportPattern = /^import \{ [^}]+Package \} from "\.\/.*\/index\.js";\n?/gm;
-  const hasPackageRegistryShape =
-    packageImportPattern.test(current) || /packages:\s*\[[^\]]*\]/m.test(current);
-  packageImportPattern.lastIndex = 0;
-
-  if (packageRecords.length === 0 && !hasPackageRegistryShape) {
-    return registryPath;
-  }
-
-  const imports = packageRecords.map((record) => renderPackageRegistryImport(srcRoot, record)).join("\n");
-  const packageEntries = packageRecords.map((record) => `${toPascalCase(record.name)}Package`).join(", ");
-  const strippedImports = current.replace(packageImportPattern, "");
-  const withImports = `${imports}${imports ? "\n\n" : ""}${strippedImports}`.replace(/^\n+/, "");
-  const packagePattern = /packages:\s*\[[^\]]*\]/m;
-
-  if (packagePattern.test(withImports)) {
-    const next = withImports.replace(packagePattern, `packages: [${packageEntries}]`);
-    if (next !== current) {
-      fs.writeFileSync(registryPath, next, "utf8");
-    }
-    return registryPath;
-  }
-
-  const registryOpenPattern = /(export const registry = \{\n)/;
-
-  if (!registryOpenPattern.test(withImports)) {
-    throw new Error(`Unable to update ${registryPath} safely. registry.ts is malformed.`);
-  }
-
-  const next = withImports.replace(
-    registryOpenPattern,
-    `$1  packages: [${packageEntries}],\n`
-  );
-
-  if (next !== current) {
-    fs.writeFileSync(registryPath, next, "utf8");
-  }
-
+  const next = renderRegistryRootFile(rootDir, registry);
+  fs.writeFileSync(registryPath, next, "utf8");
   return registryPath;
 };
 
@@ -615,10 +671,7 @@ export const upsertFileIntoRegistry = (
     }
 
     const existingIndex = record.files.findIndex((entry) => entry.path === normalizedPath);
-    const nextFile: PackageFileRecord = {
-      type: fileType,
-      path: normalizedPath
-    };
+    const nextFile = createPackageFileRecord(fileType, normalizedPath, true);
 
     if (existingIndex >= 0) {
       record.files[existingIndex] = nextFile;
@@ -630,10 +683,7 @@ export const upsertFileIntoRegistry = (
   }
 
   const existing = registry.files.findIndex((entry) => entry.path === normalizedPath);
-  const nextFile: PackageFileRecord = {
-    type: fileType,
-    path: normalizedPath
-  };
+  const nextFile = createPackageFileRecord(fileType, normalizedPath, true);
 
   if (existing >= 0) {
     registry.files[existing] = nextFile;
@@ -644,7 +694,48 @@ export const upsertFileIntoRegistry = (
   return registry;
 };
 
-export const removeFileFromRegistry = (
+export const unregisterFileFromRegistry = (
+  registry: PackageRegistryArtifact,
+  filePath: string
+): PackageRegistryArtifact => {
+  const normalizedPath = normalizeRelativePath(filePath);
+
+  for (const record of Object.values(registry.packages)) {
+    if (normalizedPath === record.index) {
+      return registry;
+    }
+
+    if (!isFileOwnedByPackage(record, normalizedPath)) {
+      continue;
+    }
+
+    const existingIndex = record.files.findIndex((entry) => entry.path === normalizedPath);
+    if (existingIndex >= 0) {
+      record.files[existingIndex] = {
+        ...record.files[existingIndex]!,
+        registered: false
+      };
+    } else {
+      record.files.push(createPackageFileRecord(inferFileType(normalizedPath), normalizedPath, false));
+    }
+
+    return registry;
+  }
+
+  const existingIndex = registry.files.findIndex((entry) => entry.path === normalizedPath);
+  if (existingIndex >= 0) {
+    registry.files[existingIndex] = {
+      ...registry.files[existingIndex]!,
+      registered: false
+    };
+    return registry;
+  }
+
+  registry.files.push(createPackageFileRecord(inferFileType(normalizedPath), normalizedPath, false));
+  return registry;
+};
+
+export const deleteFileFromRegistry = (
   registry: PackageRegistryArtifact,
   filePath: string
 ): PackageRegistryArtifact => {
@@ -660,7 +751,6 @@ export const removeFileFromRegistry = (
     }
 
     record.files = record.files.filter((entry) => entry.path !== normalizedPath);
-
     return registry;
   }
 

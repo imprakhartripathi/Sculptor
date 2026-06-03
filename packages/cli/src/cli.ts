@@ -263,6 +263,22 @@ const extractOutputDir = (
 const normalizePathLike = (value: string): string =>
   value.replace(/\\/g, "/").replace(/\./g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
 
+const isRegistryManagedGeneratedFile = (filePath: string): boolean => {
+  const normalized = filePath.replace(/\\/g, "/");
+
+  if (normalized.endsWith(".spec.ts")) {
+    return false;
+  }
+
+  if (normalized.endsWith(".route.handler.ts")) {
+    return false;
+  }
+
+  return /\.(controller|service|repository|middleware|module|dto|route|type|types|interface|class|enum)\.ts$/.test(
+    normalized
+  );
+};
+
 const getFlagValue = (args: string[], names: string[]): string | undefined => {
   for (const name of names) {
     const prefixed = `${name}=`;
@@ -1124,24 +1140,25 @@ const handleGenerate = async (
 
   await writeGeneratedFiles(targetDir, files, { cwd, prompt, spawn, log, error });
 
-  if (packagePath || kind === "pkg") {
-    const registry = syncPackageRegistry(appRoot);
+  const registry = syncPackageRegistry(appRoot);
 
-    for (const filePath of Object.keys(files)) {
-      upsertFileIntoRegistry(registry, filePath);
-      const owningPackage = getOwningPackage(registry, filePath);
-      if (owningPackage) {
-        updatePackageIndexForRecord(path.join(appRoot, owningPackage.index), owningPackage);
-      }
+  for (const filePath of Object.keys(files)) {
+    if (!isRegistryManagedGeneratedFile(filePath)) {
+      continue;
     }
 
-    savePackageRegistry(appRoot, registry);
+    upsertFileIntoRegistry(registry, filePath);
+    const owningPackage = getOwningPackage(registry, filePath);
+    if (owningPackage) {
+      updatePackageIndexForRecord(path.join(appRoot, owningPackage.index), owningPackage);
+    }
   }
+
+  savePackageRegistry(appRoot, registry);
 
   if (resolveTestingGenerate(appRoot)) {
     await syncTestHarness(targetDir, { cwd, prompt, spawn, log, error });
   }
-  syncPackageRegistry(appRoot);
   syncRootRegistryForPackages(appRoot);
   log(`Generated ${kind} "${resolvedName}" using ${mode} mode.`);
   return;
