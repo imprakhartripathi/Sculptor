@@ -519,6 +519,85 @@ const isFileOwnedByPackage = (record: PackageRecord, filePath: string): boolean 
   return normalized.startsWith(`${record.path}/`) || normalized === record.index;
 };
 
+const renderPackageRegistryImport = (srcRoot: string, record: PackageRecord): string => {
+  const packageImportPath = record.path.startsWith(`${srcRoot}/`)
+    ? record.path.slice(`${srcRoot}/`.length)
+    : record.path;
+
+  return `import { ${toPascalCase(record.name)}Package } from "./${normalizeRelativePath(
+    path.posix.join(packageImportPath, "index.js")
+  )}";`;
+};
+
+const renderRegistryRootFile = (srcRoot: string, records: PackageRecord[]): string => {
+  const imports = records.map((record) => renderPackageRegistryImport(srcRoot, record)).join("\n");
+  const packageEntries = records.map((record) => `${toPascalCase(record.name)}Package`).join(", ");
+
+  return `${imports}${imports ? "\n\n" : ""}export const registry = {\n  packages: [${packageEntries}],\n  controllers: [],\n  routes: [],\n  services: [],\n  repositories: [],\n  middlewares: []\n};\n`;
+};
+
+export const syncRootRegistryForPackages = (rootDir: string): string => {
+  const srcRoot = getSrcRoot(rootDir);
+  const registryPath = path.join(rootDir, srcRoot, "registry.ts");
+  const registry = loadPackageRegistry(rootDir);
+  const packageRecords = Object.values(registry.packages).sort((left, right) =>
+    left.name.localeCompare(right.name)
+  );
+
+  if (packageRecords.length === 0 && !fs.existsSync(registryPath)) {
+    return registryPath;
+  }
+
+  fs.mkdirSync(path.dirname(registryPath), { recursive: true });
+
+  if (!fs.existsSync(registryPath)) {
+    const next = renderRegistryRootFile(srcRoot, packageRecords);
+    fs.writeFileSync(registryPath, next, "utf8");
+    return registryPath;
+  }
+
+  const current = fs.readFileSync(registryPath, "utf8");
+  const packageImportPattern = /^import \{ [^}]+Package \} from "\.\/.*\/index\.js";\n?/gm;
+  const hasPackageRegistryShape =
+    packageImportPattern.test(current) || /packages:\s*\[[^\]]*\]/m.test(current);
+  packageImportPattern.lastIndex = 0;
+
+  if (packageRecords.length === 0 && !hasPackageRegistryShape) {
+    return registryPath;
+  }
+
+  const imports = packageRecords.map((record) => renderPackageRegistryImport(srcRoot, record)).join("\n");
+  const packageEntries = packageRecords.map((record) => `${toPascalCase(record.name)}Package`).join(", ");
+  const strippedImports = current.replace(packageImportPattern, "");
+  const withImports = `${imports}${imports ? "\n\n" : ""}${strippedImports}`.replace(/^\n+/, "");
+  const packagePattern = /packages:\s*\[[^\]]*\]/m;
+
+  if (packagePattern.test(withImports)) {
+    const next = withImports.replace(packagePattern, `packages: [${packageEntries}]`);
+    if (next !== current) {
+      fs.writeFileSync(registryPath, next, "utf8");
+    }
+    return registryPath;
+  }
+
+  const registryOpenPattern = /(export const registry = \{\n)/;
+
+  if (!registryOpenPattern.test(withImports)) {
+    throw new Error(`Unable to update ${registryPath} safely. registry.ts is malformed.`);
+  }
+
+  const next = withImports.replace(
+    registryOpenPattern,
+    `$1  packages: [${packageEntries}],\n`
+  );
+
+  if (next !== current) {
+    fs.writeFileSync(registryPath, next, "utf8");
+  }
+
+  return registryPath;
+};
+
 export const upsertFileIntoRegistry = (
   registry: PackageRegistryArtifact,
   filePath: string

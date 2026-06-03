@@ -7,8 +7,8 @@ import { stdin, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "@sculptor/config";
 import { getConfigValue, listConfigEntries, setConfigValue } from "./config-commands.js";
-import { getPackageFlagValue, handleLsCommand, ensureRootRegistryForPackages, handlePackageCommand, handleRegisterCommand, handleSyncCommand, stripPackageFlag, validatePackageRegistryState } from "./package-commands.js";
-import { getOwningPackage, loadPackageRegistry, savePackageRegistry, syncPackageRegistry, updatePackageIndexForRecord, upsertFileIntoRegistry } from "./package-registry.js";
+import { getPackageFlagValue, handleLsCommand, handlePackageCommand, handleRegisterCommand, handleSyncCommand, stripPackageFlag, validatePackageRegistryState } from "./package-commands.js";
+import { getOwningPackage, loadPackageRegistry, savePackageRegistry, syncPackageRegistry, syncRootRegistryForPackages, updatePackageIndexForRecord, upsertFileIntoRegistry } from "./package-registry.js";
 import { writeAgentsMarkdown } from "./agents.js";
 import { detectPackageManager, globalInstallArgsFor } from "./package-manager.js";
 import { createDoctorReport, hasDoctorErrors, printDoctorReport } from "./diagnostics.js";
@@ -139,9 +139,10 @@ const extractOutputDir = (args) => {
     }
     return {
         args: [...args.slice(0, index), ...args.slice(index + 2)],
-        outputDir: args[index + 1]
+        outputDir: normalizePathLike(args[index + 1] ?? "")
     };
 };
+const normalizePathLike = (value) => value.replace(/\\/g, "/").replace(/\./g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
 const getFlagValue = (args, names) => {
     for (const name of names) {
         const prefixed = `${name}=`;
@@ -718,7 +719,7 @@ const handleGenerate = async (args, cwd, prompt, spawn, log, error) => {
                 : packagePath)
         : undefined;
     const resolvedOutputDir = kind === "pkg"
-        ? outputDir ?? String(loadConfig(appRoot).framework.project?.srcRoot ?? "src")
+        ? outputDir ?? path.posix.join(String(loadConfig(appRoot).framework.project?.srcRoot ?? "src"), "app")
         : packageScopedOutput ?? outputDir;
     const resolvedName = explicitName ??
         (() => {
@@ -749,9 +750,7 @@ const handleGenerate = async (args, cwd, prompt, spawn, log, error) => {
         await syncTestHarness(targetDir, { cwd, prompt, spawn, log, error });
     }
     syncPackageRegistry(appRoot);
-    if (kind === "pkg") {
-        ensureRootRegistryForPackages(appRoot);
-    }
+    syncRootRegistryForPackages(appRoot);
     log(`Generated ${kind} "${resolvedName}" using ${mode} mode.`);
     return;
 };

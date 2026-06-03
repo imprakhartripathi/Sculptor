@@ -153,7 +153,7 @@ sc generate package user
 - default output for types is \`src/app/types\`
 - default output for repositories is \`src/app/repositories\`
 - default output for DTOs is \`src/app/dtos\`
-- package generation uses the configured \`project.srcRoot\` unless \`in\` is provided
+- package generation defaults to \`<project.srcRoot>/app\` and appends the package name there unless \`in\` is provided
 - controller generators are controller-first by default; pass \`--functional\` only when you want the paired functional route files
 - route generators always emit the paired functional route and handler files
 `;

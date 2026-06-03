@@ -369,23 +369,33 @@ describe("cli", () => {
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
-    const packageIndex = path.join(cwd, "src", "user", "index.ts");
+    const packageIndex = path.join(cwd, "src", "app", "user", "index.ts");
     const registryFile = path.join(cwd, "sculptor.packages.json");
+    const rootRegistryFile = path.join(cwd, "src", "registry.ts");
 
     expect(fs.existsSync(packageIndex)).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src", "users", "index.ts"))).toBe(false);
+    expect(fs.existsSync(path.join(cwd, "src", "app", "users", "index.ts"))).toBe(false);
     expect(fs.readFileSync(packageIndex, "utf8")).toContain('name: "user"');
     expect(fs.readFileSync(packageIndex, "utf8")).toContain("[sculptor:imports:start]");
     expect(fs.readFileSync(registryFile, "utf8")).toContain('"user"');
+    expect(fs.readFileSync(rootRegistryFile, "utf8")).toContain("UserPackage");
 
     fs.appendFileSync(
       packageIndex,
       "\n// manual note\nexport const preserved = true;\n"
     );
 
-    await runCli(["node", "sc", "reg", "src/user/user.service.ts"], {
+    await runCli(["node", "sc", "reg", "src/app/user/user.service.ts"], {
       cwd,
+      prompt: async () => "y",
       log: () => undefined,
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    await runCli(["node", "sc", "reg", "pkg", "user"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
       error: () => undefined,
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
@@ -393,6 +403,7 @@ describe("cli", () => {
     const updatedIndex = fs.readFileSync(packageIndex, "utf8");
     expect(updatedIndex).toContain("// manual note");
     expect(updatedIndex).toContain('name: "user"');
+    expect(logs.join("\n")).toContain('Registered package "user" in src/registry.ts');
 
     const treeLogs: string[] = [];
     await runCli(["node", "sc", "ls", "-t", "-p=user"], {
@@ -403,8 +414,8 @@ describe("cli", () => {
     });
 
     const treeOutput = treeLogs.join("\n");
-    expect(treeOutput).toContain("user (src/user)");
-    expect(treeOutput).not.toContain("users (src/users)");
+    expect(treeOutput).toContain("user (src/app/user)");
+    expect(treeOutput).not.toContain("users (src/app/users)");
 
     const pkgLogs: string[] = [];
     await runCli(["node", "sc", "pkg", "user"], {
@@ -474,8 +485,9 @@ describe("cli", () => {
 
     const logs: string[] = [];
 
-    await runCli(["node", "sc", "register", "src/user/user.service.ts"], {
+    await runCli(["node", "sc", "register", "src/app/user/user.service.ts"], {
       cwd,
+      prompt: async () => "y",
       log: (value) => logs.push(String(value)),
       error: () => undefined,
       spawn: vi.fn(() => ({ status: 0 })) as never
@@ -488,35 +500,39 @@ describe("cli", () => {
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
-    await runCli(["node", "sc", "r", "src/user/user.service.ts"], {
+    await runCli(["node", "sc", "r", "src/app/user/user.service.ts"], {
       cwd,
+      prompt: async () => "y",
       log: (value) => logs.push(String(value)),
       error: () => undefined,
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
-    await runCli(["node", "sc", "unreg", "src/user/user.service.ts"], {
+    await runCli(["node", "sc", "unreg", "src/app/user/user.service.ts"], {
       cwd,
+      prompt: async () => "y",
       log: (value) => logs.push(String(value)),
       error: () => undefined,
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
-    await runCli(["node", "sc", "unregister", "src/user/user.service.ts"], {
+    await runCli(["node", "sc", "unregister", "src/app/user/user.service.ts"], {
       cwd,
+      prompt: async () => "y",
       log: (value) => logs.push(String(value)),
       error: () => undefined,
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
-    await runCli(["node", "sc", "ur", "src/user/user.service.ts"], {
+    await runCli(["node", "sc", "ur", "src/app/user/user.service.ts"], {
       cwd,
+      prompt: async () => "y",
       log: (value) => logs.push(String(value)),
       error: () => undefined,
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
-    await runCli(["node", "sc", "remove", "src/user/user.service.ts"], {
+    await runCli(["node", "sc", "remove", "src/app/user/user.service.ts"], {
       cwd,
       prompt: async () => "y",
       log: (value) => logs.push(String(value)),
@@ -525,10 +541,13 @@ describe("cli", () => {
     });
 
     const output = logs.join("\n");
-    expect(output).toContain("Registered src/user/user.service.ts");
-    expect(output).toContain("user (src/user)");
-    expect(output).toContain("Unregistered src/user/user.service.ts");
-    expect(output).toContain("Removed src/user/user.service.ts");
+    expect(output).toContain('Registering "src/app/user/user.service.ts" inside package "user" at path = src/app/user/user.service.ts');
+    expect(output).toContain("user (src/app/user)");
+    expect(output).toContain('Unregistering "src/app/user/user.service.ts" inside package "user" at path = src/app/user/user.service.ts');
+    expect(output).toContain('Removing "src/app/user/user.service.ts" inside package "user" at path = src/app/user/user.service.ts');
+    expect(output).toContain("Registered src/app/user/user.service.ts");
+    expect(output).toContain("Unregistered src/app/user/user.service.ts");
+    expect(output).toContain("Removed src/app/user/user.service.ts");
   });
 
   it("generates AGENTS.md with package-aware guidance", async () => {
@@ -653,6 +672,13 @@ describe("cli", () => {
       spawn: vi.fn(() => ({ status: 0 })) as never
     });
 
+    await runCli(["node", "sc", "g", "c", "alias", "in", "src.app.alias"], {
+      cwd,
+      log: (value) => logs.push(String(value)),
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
     await runCli(["node", "sc", "g", "c", "session", "--functional"], {
       cwd,
       log: (value) => logs.push(String(value)),
@@ -689,6 +715,7 @@ describe("cli", () => {
     });
 
     expect(fs.existsSync(path.join(cwd, "src/app/controllers/profile.controller.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/app/alias/alias.controller.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/services/profile.service.ts"))).toBe(false);
     expect(fs.existsSync(path.join(cwd, "src/app/modules/profile.module.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/services/profile.module.ts"))).toBe(false);

@@ -11,6 +11,7 @@ import {
   savePackageRegistry,
   scanPackageRegistry,
   syncPackageRegistry,
+  syncRootRegistryForPackages,
   updatePackageIndexForRecord,
   upsertFileIntoRegistry,
   type PackageRecord
@@ -205,6 +206,63 @@ export const printPackageValidation = (
   }
 };
 
+interface ResolvedFileTarget {
+  path: string;
+  package?: PackageRecord;
+}
+
+const collectKnownFiles = (
+  rootDir: string
+): ResolvedFileTarget[] => {
+  const scan = scanPackageRegistry(rootDir);
+
+  return [
+    ...scan.packages.flatMap((pkg) =>
+      pkg.files.map((file) => ({
+        path: file.path,
+        package: pkg
+      }))
+    ),
+    ...scan.files.map((file) => ({
+      path: file.path
+    }))
+  ];
+};
+
+const resolveFileTarget = (rootDir: string, fileInput: string): ResolvedFileTarget => {
+  const normalizedInput = normalizePath(fileInput);
+  const absolutePath = path.isAbsolute(fileInput) ? fileInput : path.join(rootDir, fileInput);
+  const relativeFromRoot = normalizePath(path.relative(rootDir, absolutePath));
+  const knownFiles = collectKnownFiles(rootDir);
+
+  const exactMatches = knownFiles.filter(
+    (file) => file.path === normalizedInput || file.path === relativeFromRoot
+  );
+
+  if (exactMatches.length === 1) {
+    return exactMatches[0]!;
+  }
+
+  if (exactMatches.length > 1) {
+    const paths = exactMatches.map((file) => file.path).join(", ");
+    throw new Error(`File "${fileInput}" is ambiguous. Matches: ${paths}`);
+  }
+
+  const leaf = path.posix.basename(normalizedInput);
+  const leafMatches = knownFiles.filter((file) => path.posix.basename(file.path) === leaf);
+
+  if (leafMatches.length === 1) {
+    return leafMatches[0]!;
+  }
+
+  if (leafMatches.length > 1) {
+    const paths = leafMatches.map((file) => file.path).join(", ");
+    throw new Error(`File "${fileInput}" is ambiguous. Matches: ${paths}`);
+  }
+
+  throw new Error(`File "${fileInput}" does not exist in this package or project.`);
+};
+
 export const handleSyncCommand = (args: string[], context: PackageCommandContext): void => {
   const rootDir = ensureAppRoot(context.cwd, "sc sync");
   const packageName = getPackageFlagValue(args);
@@ -212,6 +270,7 @@ export const handleSyncCommand = (args: string[], context: PackageCommandContext
 
   printPackageValidation(report, context.log);
   syncPackageRegistry(rootDir);
+  syncRootRegistryForPackages(rootDir);
 };
 
 const packageTreeLines = (record: PackageRecord | undefined, registered: PackageRecord | undefined): string[] => {
@@ -331,6 +390,7 @@ export const handlePackageCommand = async (
       delete registry.packages[registryKey];
     }
     savePackageRegistry(rootDir, registry);
+    syncRootRegistryForPackages(rootDir);
     context.log(`Removed package "${packageName}".`);
     return;
   }
@@ -352,9 +412,6 @@ export const handlePackageCommand = async (
   }
 };
 
-const resolveFilePath = (rootDir: string, filePath: string): string =>
-  path.isAbsolute(filePath) ? filePath : path.join(rootDir, filePath);
-
 export const handleRegisterCommand = async (
   command: "reg" | "ureg" | "rm",
   args: string[],
@@ -368,22 +425,52 @@ export const handleRegisterCommand = async (
     process.exit(1);
   }
 
-  const filePath = normalizePath(path.relative(rootDir, resolveFilePath(rootDir, fileInput)));
-  const fileAbs = resolveFilePath(rootDir, fileInput);
-  const registry = syncPackageRegistry(rootDir);
-  const owningPackage = getOwningPackage(registry, filePath);
-
-  if (command === "rm") {
-    if (owningPackage && filePath === owningPackage.index) {
-      context.error(`sc rm cannot delete the package index file for "${owningPackage.name}". Use sc pkg rm ${owningPackage.name} instead.`);
+  if (command === "reg" && (fileInput === "pkg" || fileInput === "package")) {
+    const packageName = args[1];
+    if (!packageName) {
+      context.error(`Usage: sc reg pkg <name>`);
       process.exit(1);
     }
 
-    const answer = await context.prompt(`Delete ${filePath}? (y/n)`, "n");
-    if (!answer.trim().toLowerCase().startsWith("y")) {
-      context.log("Removal cancelled.");
-      return;
+    const registry = syncPackageRegistry(rootDir);
+    const packageRecord = getPackageByName(registry, packageName);
+    if (!packageRecord) {
+      context.error(`Package "${packageName}" is not registered.`);
+      process.exit(1);
     }
+
+    const rootRegistryPath = syncRootRegistryForPackages(rootDir);
+    context.log(`Registered package "${packageName}" in ${path.posix.relative(rootDir, rootRegistryPath)}`);
+    return;
+  }
+
+  if (command === "ureg" && (fileInput === "pkg" || fileInput === "package")) {
+    context.error("Package unregistering from registry.ts is not supported yet. Use sc pkg rm <name> to remove the package and its registry entry.");
+    return;
+  }
+
+  const resolvedTarget = resolveFileTarget(rootDir, fileInput);
+  const filePath = resolvedTarget.path;
+  const fileAbs = path.join(rootDir, filePath);
+  const registry = syncPackageRegistry(rootDir);
+  const owningPackage = getOwningPackage(registry, filePath) ?? resolvedTarget.package;
+
+  const scopeMessage = owningPackage
+    ? `inside package "${owningPackage.name}" at path = ${filePath}`
+    : `at path = ${filePath}`;
+  const actionLabel =
+    command === "reg" ? "Registering" : command === "rm" ? "Removing" : "Unregistering";
+
+  if (command === "rm" && owningPackage && filePath === owningPackage.index) {
+    context.error(`sc rm cannot delete the package index file for "${owningPackage.name}". Use sc pkg rm ${owningPackage.name} instead.`);
+    process.exit(1);
+  }
+
+  context.log(`${actionLabel} "${fileInput}" ${scopeMessage}`);
+  const answer = await context.prompt("Continue? (y/n)", "n");
+  if (!answer.trim().toLowerCase().startsWith("y")) {
+    context.log(`${actionLabel} cancelled.`);
+    return;
   }
 
   if (command === "reg") {
@@ -401,6 +488,8 @@ export const handleRegisterCommand = async (
   if (owningPackage) {
     updatePackageIndexForRecord(path.join(rootDir, owningPackage.index), owningPackage);
   }
+
+  syncRootRegistryForPackages(rootDir);
 
   context.log(`${command === "reg" ? "Registered" : command === "rm" ? "Removed" : "Unregistered"} ${filePath}`);
 };

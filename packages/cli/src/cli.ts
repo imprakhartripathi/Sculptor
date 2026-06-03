@@ -15,7 +15,6 @@ import {
 import {
   getPackageFlagValue,
   handleLsCommand,
-  ensureRootRegistryForPackages,
   handlePackageCommand,
   handleRegisterCommand,
   handleSyncCommand,
@@ -27,6 +26,7 @@ import {
   loadPackageRegistry,
   savePackageRegistry,
   syncPackageRegistry,
+  syncRootRegistryForPackages,
   updatePackageIndexForRecord,
   upsertFileIntoRegistry
 } from "./package-registry.js";
@@ -256,9 +256,12 @@ const extractOutputDir = (
 
   return {
     args: [...args.slice(0, index), ...args.slice(index + 2)],
-    outputDir: args[index + 1]
+    outputDir: normalizePathLike(args[index + 1] ?? "")
   };
 };
+
+const normalizePathLike = (value: string): string =>
+  value.replace(/\\/g, "/").replace(/\./g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
 
 const getFlagValue = (args: string[], names: string[]): string | undefined => {
   for (const name of names) {
@@ -1089,7 +1092,7 @@ const handleGenerate = async (
 
   const resolvedOutputDir =
     kind === "pkg"
-      ? outputDir ?? String(loadConfig(appRoot).framework.project?.srcRoot ?? "src")
+      ? outputDir ?? path.posix.join(String(loadConfig(appRoot).framework.project?.srcRoot ?? "src"), "app")
       : packageScopedOutput ?? outputDir;
 
   const resolvedName =
@@ -1139,9 +1142,7 @@ const handleGenerate = async (
     await syncTestHarness(targetDir, { cwd, prompt, spawn, log, error });
   }
   syncPackageRegistry(appRoot);
-  if (kind === "pkg") {
-    ensureRootRegistryForPackages(appRoot);
-  }
+  syncRootRegistryForPackages(appRoot);
   log(`Generated ${kind} "${resolvedName}" using ${mode} mode.`);
   return;
 };

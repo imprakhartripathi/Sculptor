@@ -25,7 +25,7 @@ If you are new to the framework, read this file first, then move into the packag
 
 ## Release Notes
 
-Current pre-release line: `v0.3.1`
+Current pre-release line: `v0.3.2`
 
 - `@sculptor/core`
 - `@sculptor/router`

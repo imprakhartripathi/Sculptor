@@ -105,7 +105,7 @@ export const resolveGeneratorOutputDir = (
 
   switch (kind) {
     case "pkg":
-      return normalizeRelativePath("src");
+      return normalizeRelativePath("src/app");
     case "controller":
       return "src/app/controllers";
     case "service":

@@ -18,7 +18,7 @@ It handles:
 ## Version Policy
 
 - Pre-release line: `v0.3.x`
-- Current package version: `0.3.1`
+- Current package version: `0.3.2`
 - This pre-release line adds package-aware generation, `sc doctor`, `sc agents`, `sculptor.packages.json`, and package alias commands.
 - Expect minor changes and fixes until `v1.0.0`.
 
