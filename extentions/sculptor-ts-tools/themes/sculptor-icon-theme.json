@@ -1,0 +1,18 @@
+{
+  "iconDefinitions": {
+    "_sculptor": {
+      "iconPath": "../icons/sculptor.png"
+    },
+    "_sculptorPackages": {
+      "iconPath": "../icons/sculptor.package.png"
+    },
+    "_props": {
+      "iconPath": "../icons/props.svg"
+    }
+  },
+  "fileNames": {
+    "sculptor.json": "_sculptor",
+    "sculptor.packages.json": "_sculptorPackages",
+    "props.json": "_props"
+  }
+}

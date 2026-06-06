@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SculptorTS Project Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "routing", "testing", "frameworkLock", "logging"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Project-level runtime and build settings.",
+      "properties": {
+        "srcRoot": {
+          "type": "string",
+          "default": "src",
+          "description": "Root directory that contains application source files."
+        },
+        "entryFile": {
+          "type": "string",
+          "default": "main.ts",
+          "description": "Application entry file used by the Sculptor bootstrap."
+        },
+        "devServer": {
+          "type": "string",
+          "enum": ["tsx", "nodemon"],
+          "enumDescriptions": [
+            "Use tsx for direct TypeScript execution during development.",
+            "Use nodemon for restart-based development workflows."
+          ],
+          "default": "tsx",
+          "markdownDescription": "Development server used when running `sc dev`."
+        }
+      }
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Routing style used by the framework.",
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": ["decorator", "functional", "hybrid"],
+          "enumDescriptions": [
+            "Controller-based routing.",
+            "Express-style functional routing.",
+            "A mixed mode that supports both controllers and functional routes."
+          ],
+          "default": "decorator",
+          "markdownDescription": "Controls the routing style used by the framework."
+        }
+      }
+    },
+    "testing": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Test generation and framework settings.",
+      "properties": {
+        "generate": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Automatically generates matching test files when resources are created."
+        },
+        "framework": {
+          "type": "string",
+          "enum": ["vitest"],
+          "enumDescriptions": [
+            "Use Vitest for generated and scaffolded test suites."
+          ],
+          "default": "vitest",
+          "markdownDescription": "Testing framework used by the generated project."
+        }
+      }
+    },
+    "frameworkLock": {
+      "type": "boolean",
+      "default": true,
+      "markdownDescription": "Locks the framework version and conventions for the project scaffold."
+    },
+    "logging": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Runtime logging controls.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Enables Sculptor runtime logging."
+        },
+        "dogMode": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Enables Bruno, Coki and Dodie themed logger output."
+        }
+      }
+    }
+  }
+}

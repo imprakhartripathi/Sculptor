@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SculptorTS Runtime Properties",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["app"],
+  "properties": {
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Application runtime configuration.",
+      "properties": {
+        "port": {
+          "type": "number",
+          "default": 3000,
+          "markdownDescription": "HTTP port used by the running application."
+        },
+        "prefix": {
+          "type": "string",
+          "default": "/api",
+          "markdownDescription": "Base route prefix used by the application."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "name": "sculptor-toolkit",
+  "displayName": "Sculptor Toolkit",
+  "description": "Production-ready VS Code tools for SculptorTS projects.",
+  "version": "0.1.0",
+  "publisher": "imprakhartripathi",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "sculptor",
+    "sculptorts",
+    "vscode",
+    "extension",
+    "json-schema"
+  ],
+  "activationEvents": [
+    "workspaceContains:sculptor.json",
+    "onCommand:sculptor.openDocumentation",
+    "onCommand:sculptor.openCliDocs",
+    "onCommand:sculptor.openCoreDocs",
+    "onCommand:sculptor.openRouterDocs",
+    "onCommand:sculptor.openConfigDocs",
+    "onCommand:sculptor.openPawsDocs",
+    "onCommand:sculptor.explainCurrentFile",
+    "onView:sculptor.documentation"
+  ],
+  "main": "./dist/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imprakhartripathi/Sculptor.git"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "lint": "eslint \"src/**/*.ts\"",
+    "prepack": "npm run build"
+  },
+  "contributes": {
+    "jsonValidation": [
+      {
+        "fileMatch": [
+          "**/sculptor.json"
+        ],
+        "url": "./schemas/sculptor.schema.json"
+      },
+      {
+        "fileMatch": [
+          "**/props.json"
+        ],
+        "url": "./schemas/props.schema.json"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "sculptor-file-icons",
+        "label": "Sculptor File Icons",
+        "path": "./themes/sculptor-icon-theme.json"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sculptor",
+          "title": "Sculptor",
+          "icon": "./icons/sculptor.png"
+        }
+      ]
+    },
+    "views": {
+      "sculptor": [
+        {
+          "id": "sculptor.documentation",
+          "name": "Documentation"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "sculptor.openDocumentation",
+        "title": "Sculptor: Open Documentation",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.openCliDocs",
+        "title": "Sculptor: Open CLI Docs",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.openCoreDocs",
+        "title": "Sculptor: Open Core Docs",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.openRouterDocs",
+        "title": "Sculptor: Open Router Docs",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.openConfigDocs",
+        "title": "Sculptor: Open Config Docs",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.openPawsDocs",
+        "title": "Sculptor: Open Paws Docs",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.explainCurrentFile",
+        "title": "Sculptor: Explain Current File",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.openSupportIssues",
+        "title": "Sculptor: Open Support Issues",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.openSupportDiscussions",
+        "title": "Sculptor: Open Support Discussions",
+        "category": "Sculptor"
+      },
+      {
+        "command": "sculptor.openSupportDiscord",
+        "title": "Sculptor: Open Support Discord",
+        "category": "Sculptor"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "sculptor.openDocumentation",
+          "when": "sculptor.isProject == true",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sculptor.openCliDocs",
+          "when": "sculptor.isProject == true",
+          "group": "navigation@2"
+        },
+        {
+          "command": "sculptor.openConfigDocs",
+          "when": "sculptor.isProject == true",
+          "group": "navigation@3"
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "eslint": "^9.20.0",
+    "typescript": "^5.8.3"
+  }
+}
