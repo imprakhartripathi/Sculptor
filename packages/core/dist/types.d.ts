@@ -1,6 +1,6 @@
 import type express from "express";
 import type { RequestHandler } from "express";
-import type { PackageToken, ProviderToken } from "@sculptor/di";
+import type { PackageToken, ProviderToken, SculptorFunctionalHandler, SculptorFunctionalController, SculptorFunctionalPackage, SculptorFunctionalRepository, SculptorFunctionalService } from "@sculptor/di";
 import type { ControllerClass, Err as RouterErr, Nxt as RouterNxt, Req as RouterReq, Res as RouterRes, RouterSource, RouterErrorHandler } from "@sculptor/router";
 import type { SculptorError } from "./errors.js";
 export interface RegistryShape {
@@ -11,6 +11,7 @@ export interface RegistryShape {
     repositories?: ProviderToken[];
     middlewares?: RequestHandler[];
 }
+export type { SculptorFunctionalController, SculptorFunctionalHandler, SculptorFunctionalPackage, SculptorFunctionalRepository, SculptorFunctionalService };
 export type Req = RouterReq;
 export type Res = RouterRes;
 export type Nxt = RouterNxt;

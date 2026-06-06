@@ -5,7 +5,7 @@ export type { TestingMetadata, ScaffoldProjectMetadata } from "./utils.js";
 export { controllerHelp, generateHelp, middlewareHelp, moduleHelp, routeHelp, typeHelp };
 export declare const syncTestHarness: (targetDir: string) => void;
 export declare const scaffoldProject: (metadata: ScaffoldProjectMetadata, targetDir: string) => void;
-export declare const generateResourceFiles: (kind: GenerateKind, name: string, _mode: ScaffoldMode, _devServer?: DevServer, outputDir?: string, typeVariant?: TypeVariant, functionalRoutes?: boolean, testingGenerate?: boolean) => Record<string, string>;
+export declare const generateResourceFiles: (kind: GenerateKind, name: string, mode: ScaffoldMode, _devServer?: DevServer, outputDir?: string, typeVariant?: TypeVariant, functionalRoutes?: boolean, testingGenerate?: boolean) => Record<string, string>;
 export declare const writeGeneratedFiles: (targetDir: string, files: Record<string, string>) => void;
 export declare const readModeFromFlags: (flags: string[], fallback: ScaffoldMode) => ScaffoldMode;
 export declare const parseGenerateMode: (mode: string | undefined, fallback: ScaffoldMode) => ScaffoldMode;

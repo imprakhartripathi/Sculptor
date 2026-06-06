@@ -68,9 +68,10 @@ export const AutoInject =
   };
 
 export const Package =
-  (definition: PackageDefinition): ClassDecorator =>
-  (target) => {
+  (definition: PackageDefinition) =>
+  <T extends PackageToken>(target: T): T => {
     Reflect.defineMetadata(DI_METADATA_KEYS.package, definition, target);
+    return target;
   };
 
 export const getPackageDefinition = (token: PackageToken): PackageDefinition | undefined =>

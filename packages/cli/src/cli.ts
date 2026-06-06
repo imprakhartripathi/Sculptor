@@ -1078,7 +1078,7 @@ const handleGenerate = async (
         : rest.includes("-enum") || rest.includes("-e")
           ? "enum"
           : "type";
-  const functionalRoutes = rest.includes("--functional") || rest.includes("--with-routes");
+  const functionalRoutes = rest.some((arg) => ["--functional", "-f", "-fun", "--fun", "--with-routes"].includes(arg));
 
   if (
     kind !== "type" &&

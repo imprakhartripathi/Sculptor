@@ -13,5 +13,10 @@ export type {
   PackageToken,
   ProviderDescriptor,
   ProviderRegistration,
-  ProviderToken
+  ProviderToken,
+  SculptorFunctionalHandler,
+  SculptorFunctionalController,
+  SculptorFunctionalPackage,
+  SculptorFunctionalRepository,
+  SculptorFunctionalService
 } from "./types.js";

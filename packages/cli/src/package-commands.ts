@@ -119,12 +119,20 @@ const comparePackageFiles = (
   const registeredFiles = new Map((registered?.files ?? []).map((entry) => [entry.path, entry]));
 
   for (const [filePath, fileRecord] of registeredFiles) {
+    if (fileRecord.tags.includes("helper")) {
+      continue;
+    }
+
     if (fileRecord.registered && !detectedFiles.has(filePath)) {
       messages.push(`Missing registered file: ${filePath}`);
     }
   }
 
   for (const [filePath, fileRecord] of detectedFiles) {
+    if (fileRecord.tags.includes("helper")) {
+      continue;
+    }
+
     const registryRecord = registeredFiles.get(filePath);
     if (!registryRecord || !registryRecord.registered || !fileRecord.registered) {
       messages.push(`Detected unregistered file: ${filePath}`);
@@ -263,6 +271,7 @@ const resolveFileTarget = (rootDir: string, fileInput: string): ResolvedFileTarg
   const normalizedInput = normalizePath(fileInput);
   const absolutePath = path.isAbsolute(fileInput) ? fileInput : path.join(rootDir, fileInput);
   const relativeFromRoot = normalizePath(path.relative(rootDir, absolutePath));
+  const scan = scanPackageRegistry(rootDir);
   const knownFiles = collectKnownFiles(rootDir);
 
   const exactMatches = knownFiles.filter(
@@ -288,6 +297,18 @@ const resolveFileTarget = (rootDir: string, fileInput: string): ResolvedFileTarg
   if (leafMatches.length > 1) {
     const paths = leafMatches.map((file) => file.path).join(", ");
     throw new Error(`File "${fileInput}" is ambiguous. Matches: ${paths}`);
+  }
+
+  if (fs.existsSync(absolutePath) && fs.statSync(absolutePath).isFile()) {
+    const owningPackage = scan.packages.find((record) => {
+      const normalizedPackagePath = normalizePath(record.path);
+      return relativeFromRoot.startsWith(`${normalizedPackagePath}/`);
+    });
+
+    return {
+      path: relativeFromRoot,
+      package: owningPackage
+    };
   }
 
   throw new Error(`File "${fileInput}" does not exist in this package or project.`);
@@ -512,10 +533,15 @@ export const handleRegisterCommand = async (
     return;
   }
 
-  const generatedTarget = secondaryInput ? resolveGeneratedFileTarget(rootDir, primaryInput, secondaryInput) : undefined;
-  const fileInput = generatedTarget
-    ? `${secondaryInput}${generatedSuffixByKind[primaryInput.split(/[\\/]/).filter(Boolean).pop()?.toLowerCase() ?? ""] ?? ""}`
-    : primaryInput;
+  const suffixKey = primaryInput.split(/[\\/]/).filter(Boolean).pop()?.toLowerCase() ?? "";
+  const generatedSuffix = generatedSuffixByKind[suffixKey] ?? "";
+  const fileInput = secondaryInput && generatedSuffix ? `${secondaryInput}${generatedSuffix}` : primaryInput;
+  const generatedTarget = secondaryInput && generatedSuffix ? resolveGeneratedFileTarget(rootDir, primaryInput, secondaryInput) : undefined;
+
+  if (secondaryInput && generatedSuffix && !generatedTarget) {
+    context.error(`File "${fileInput}" does not exist in this package or project.`);
+    process.exit(1);
+  }
 
   const resolvedTarget = generatedTarget ?? resolveFileTarget(rootDir, fileInput);
   const filePath = resolvedTarget.path;

@@ -323,45 +323,175 @@ export const healthTypesTemplate = `export type HealthTypes = {
   status: string;
 };
 `;
-export const healthPackageIndexTemplate = (includeRouteArtifacts) => `/**
+export const healthFunctionalServiceTemplate = `import type { SculptorFunctionalService } from "@sculptor/core";
+
+export const healthService: SculptorFunctionalService<{ status: string }> = () => ({
+  status: "ok"
+});
+`;
+export const healthFunctionalRepositoryTemplate = `import type { SculptorFunctionalRepository } from "@sculptor/core";
+
+export const healthRepository: SculptorFunctionalRepository<{ status: string }> = () => ({
+  status: "ok"
+});
+`;
+export const healthFunctionalRouteHandlerTemplate = `import { normalizeError } from "@sculptor/core";
+import type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError, SculptorFunctionalHandler } from "@sculptor/core";
+
+import { healthService } from "./health.service.js";
+
+export const healthHandler: SculptorFunctionalHandler<void> = async (
+  req: Req,
+  res: Res,
+  next: Nxt
+): Promise<void> => {
+  try {
+    if (req.path.endsWith("/ping")) {
+      res.json({ message: "pong" });
+      return;
+    }
+
+    res.json(healthService());
+  } catch (error) {
+    next(normalizeError(error));
+  }
+};
+
+export const healthErrorHandler: FrameworkErrorHandler = (
+  error: SculptorError,
+  _req: Req,
+  res: Res,
+  next: Nxt
+): void => {
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+
+  res.status(500).json({
+    message: error.message,
+    code: error.code,
+    status: error.status
+  });
+};
+`;
+export const healthFunctionalRouteTemplate = `import { FunctionalRouter } from "@sculptor/router";
+
+import { healthErrorHandler, healthHandler } from "./health.route.handler.js";
+
+export const health = FunctionalRouter("/health");
+
+health.get(healthHandler);
+health.at("/ping").get(healthHandler);
+health.use(healthErrorHandler);
+`;
+export const healthFunctionalPackageIndexTemplate = () => `/**
  * @generated true
  */
-import { Package } from "@sculptor/core";
+import { Package, type SculptorFunctionalPackage } from "@sculptor/core";
 
 // [sculptor:imports:start]
-import { HealthController } from "./health.controller.js";
-import { HealthService } from "./health.service.js";
-import { HealthRepository } from "./health.repository.js";
-import { HealthDto } from "./health.dto.js";
-${includeRouteArtifacts ? `import { health } from "./health.route.js";\n` : ""}// [sculptor:imports:end]
+import { healthService } from "./health.service.js";
+import { healthRepository } from "./health.repository.js";
+import { health } from "./health.route.js";
+import { healthHandler } from "./health.route.handler.js";
+// [sculptor:imports:end]
 
 // [sculptor:exports:start]
-export * from "./health.controller.js";
+export * from "./health.route.js";
+export * from "./health.route.handler.js";
 export * from "./health.service.js";
 export * from "./health.repository.js";
-export * from "./health.dto.js";
 export type { HealthTypes } from "./health.types.js";
-${includeRouteArtifacts ? `export * from "./health.route.js";\nexport * from "./health.route.handler.js";\n` : ""}// [sculptor:exports:end]
+// [sculptor:exports:end]
 
 // [sculptor:package:start]
-@Package({
+const HealthPackageDefinition = {
+  name: "health",
+  path: "src/app/health",
+  imports: [],
+  exports: [healthService, healthRepository],
+  controllers: [],
+  handlers: [healthHandler],
+  services: [healthService],
+  repositories: [healthRepository],
+  middlewares: [],
+  routes: [health],
+  customLinkedHelper: {
+    class: [],
+    function: []
+  }
+};
+
+export const HealthPackage: SculptorFunctionalPackage = Package(HealthPackageDefinition)(() => HealthPackageDefinition);
+// [sculptor:package:end]
+`;
+export const healthPackageIndexTemplate = (mode) => `/**
+ * @generated true
+ */
+${mode === "functional"
+    ? 'import { Package, type SculptorFunctionalPackage } from "@sculptor/core";'
+    : 'import { Package } from "@sculptor/core";'}
+
+// [sculptor:imports:start]
+${mode !== "functional" ? 'import { HealthController } from "./health.controller.js";\n' : ""}
+${mode !== "functional" ? 'import { HealthService } from "./health.service.js";\n' : ""}
+${mode !== "functional" ? 'import { HealthRepository } from "./health.repository.js";\n' : ""}
+${mode !== "functional" ? 'import { HealthDto } from "./health.dto.js";\n' : ""}
+${mode === "functional" || mode === "hybrid" ? 'import { health } from "./health.route.js";\nimport { healthHandler } from "./health.route.handler.js";\n' : ""}// [sculptor:imports:end]
+
+// [sculptor:exports:start]
+${mode !== "functional" ? 'export * from "./health.controller.js";\n' : ""}
+${mode !== "functional" ? 'export * from "./health.service.js";\n' : ""}
+${mode !== "functional" ? 'export * from "./health.repository.js";\n' : ""}
+${mode !== "functional" ? 'export * from "./health.dto.js";\n' : ""}
+${mode === "functional" || mode === "hybrid" ? 'export * from "./health.route.js";\nexport * from "./health.route.handler.js";\n' : ""}
+export type { HealthTypes } from "./health.types.js";
+// [sculptor:exports:end]
+
+// [sculptor:package:start]
+${mode === "functional"
+    ? `const HealthPackageDefinition = {
+  name: "health",
+  path: "src/app/health",
+  imports: [],
+  exports: [],
+  controllers: [],
+  handlers: [healthHandler],
+  services: [],
+  repositories: [],
+  middlewares: [],
+  routes: [health],
+  customLinkedHelper: {
+    class: [],
+    function: []
+  }
+};
+
+export const HealthPackage: SculptorFunctionalPackage = Package(HealthPackageDefinition)(() => HealthPackageDefinition);`
+    : `@Package({
   name: "health",
   path: "src/app/health",
   imports: [],
   exports: [HealthService, HealthRepository, HealthDto],
   controllers: [HealthController],
+  handlers: [],
   services: [HealthService],
   repositories: [HealthRepository],
   middlewares: [],
-  routes: [${includeRouteArtifacts ? "health" : ""}]
+  routes: [${mode === "hybrid" ? "health" : ""}],
+  customLinkedHelper: {
+    class: [],
+    function: []
+  }
 })
-export class HealthPackage {}
+export class HealthPackage {}`}
 // [sculptor:package:end]
 `;
 export const healthRouteHandlerTemplate = `import { normalizeError } from "@sculptor/core";
-import type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError } from "@sculptor/core";
+import type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError, SculptorFunctionalHandler } from "@sculptor/core";
 
-export const healthHandler = async (
+export const healthHandler: SculptorFunctionalHandler<void> = async (
   req: Req,
   res: Res,
   next: Nxt
@@ -433,8 +563,8 @@ describe("health", () => {
     const app = express();
     app.use(health.toRouter());
 
-    await request(app).get("/health/route").expect(200).expect({ status: "ok" });
-    await request(app).get("/health/route/ping").expect(200).expect({ message: "pong" });
+    await request(app).get("/health").expect(200).expect({ status: "ok" });
+    await request(app).get("/health/ping").expect(200).expect({ message: "pong" });
   });
 });
 `;

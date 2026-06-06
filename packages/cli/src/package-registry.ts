@@ -124,6 +124,27 @@ const inferFileType = (filePath: string): PackageFileType => {
   return "type";
 };
 
+const isRegistryTrackableFile = (filePath: string): boolean => {
+  const normalized = normalizeRelativePath(filePath);
+
+  return (
+    /\.(controller|service|repository|middleware|module|dto|route|type|types)\.ts$/.test(normalized) ||
+    normalized.endsWith(".route.handler.ts")
+  );
+};
+
+const isHelperTagged = (record: PackageFileRecord): boolean => record.tags.includes("helper");
+
+const isHelperLikeFile = (filePath: string): boolean => {
+  const normalized = normalizeRelativePath(filePath);
+
+  if (!normalized.endsWith(".ts")) {
+    return false;
+  }
+
+  return !isRegistryTrackableFile(normalized) && !normalized.endsWith("index.ts");
+};
+
 const createPackageFileRecord = (
   type: PackageFileType,
   filePath: string,
@@ -182,7 +203,7 @@ const inferSymbolFromFile = (filePath: string): string => {
     return `${toPascalCase(base.replace(/\.types$/, ""))}Types`;
   }
 
-  return `${toPascalCase(base)}Type`;
+  return toPascalCase(base);
 };
 
 const collectTsFiles = (dir: string, rootDir: string = dir): string[] => {
@@ -235,6 +256,70 @@ const getPackageDecorator = (node: ts.ClassDeclaration): ts.CallExpression | und
   return undefined;
 };
 
+const getPackageCallExpression = (node: ts.Node): ts.CallExpression | undefined => {
+  const visit = (current: ts.Node): ts.CallExpression | undefined => {
+    if (ts.isCallExpression(current)) {
+      const callee = current.expression;
+      if (ts.isIdentifier(callee) && callee.text === "Package") {
+        return current;
+      }
+    }
+
+    return ts.forEachChild(current, visit);
+  };
+
+  return visit(node);
+};
+
+const getFunctionalPackageDefinition = (sourceFile: ts.SourceFile): ts.ObjectLiteralExpression | undefined => {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) {
+      continue;
+    }
+
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name)) {
+        continue;
+      }
+
+      const identifier = declaration.name.text;
+      if (!identifier.endsWith("PackageDefinition")) {
+        continue;
+      }
+
+      const initializer = declaration.initializer;
+      if (initializer && ts.isObjectLiteralExpression(initializer)) {
+        return initializer;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const resolvePackageDefinitionByName = (
+  sourceFile: ts.SourceFile,
+  identifier: string
+): ts.ObjectLiteralExpression | undefined => {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) {
+      continue;
+    }
+
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== identifier) {
+        continue;
+      }
+
+      if (declaration.initializer && ts.isObjectLiteralExpression(declaration.initializer)) {
+        return declaration.initializer;
+      }
+    }
+  }
+
+  return undefined;
+};
+
 const parsePackageMetadata = (
   rootDir: string,
   filePath: string
@@ -245,12 +330,19 @@ const parsePackageMetadata = (
   const classes = sourceFile.statements.filter(ts.isClassDeclaration);
   const decoratedClass = classes.find((node) => getPackageDecorator(node));
 
-  if (!decoratedClass) {
+  const decorator = decoratedClass ? getPackageDecorator(decoratedClass) : undefined;
+  const functionalCall = decorator ? undefined : getPackageCallExpression(sourceFile);
+  const functionalDefinition = decorator || functionalCall ? undefined : getFunctionalPackageDefinition(sourceFile);
+  if (!decorator && !functionalCall && !functionalDefinition) {
     return undefined;
   }
 
-  const decorator = getPackageDecorator(decoratedClass);
-  const argument = decorator?.arguments[0];
+  const packageCallArgument = functionalCall?.arguments[0];
+  const resolvedFunctionalArgument =
+    packageCallArgument && ts.isIdentifier(packageCallArgument)
+      ? resolvePackageDefinitionByName(sourceFile, packageCallArgument.text)
+      : packageCallArgument;
+  const argument = decorator?.arguments[0] ?? resolvedFunctionalArgument ?? functionalDefinition;
 
   if (!argument || !ts.isObjectLiteralExpression(argument)) {
     throw new Error(`Malformed @Package() metadata in ${filePath}.`);
@@ -276,7 +368,22 @@ const parsePackageMetadata = (
     return value.text;
   };
 
-  const name = getString("name", decoratedClass.name?.text ?? "");
+  const inferredName =
+    decoratedClass?.name?.text ??
+    (sourceFile.statements.find(ts.isVariableStatement)?.declarationList.declarations.find((declaration) => {
+      if (!ts.isIdentifier(declaration.name)) {
+        return false;
+      }
+
+      const initializer = declaration.initializer;
+      if (!initializer || !ts.isCallExpression(initializer)) {
+        return false;
+      }
+
+      const callee = initializer.expression;
+      return ts.isIdentifier(callee) && callee.text === "Package";
+    })?.name.getText(sourceFile) ?? "");
+  const name = getString("name", inferredName);
   const packagePath = getString("path", "");
 
   if (!name || !packagePath) {
@@ -307,11 +414,15 @@ export const loadPackageRegistry = (rootDir: string): PackageRegistryArtifact =>
         name,
         {
           ...record,
-          files: (record.files ?? []).map((file) => normalizeFileRecord(file))
+          files: (record.files ?? [])
+            .map((file) => normalizeFileRecord(file))
+            .filter((file) => isRegistryTrackableFile(file.path) || isHelperTagged(file))
         }
       ])
     ),
-    files: (data.files ?? []).map((file) => normalizeFileRecord(file))
+    files: (data.files ?? [])
+      .map((file) => normalizeFileRecord(file))
+      .filter((file) => isRegistryTrackableFile(file.path) || isHelperTagged(file))
   };
 };
 
@@ -372,7 +483,12 @@ export const scanPackageRegistry = (rootDir: string): PackageScanResult => {
   const ownedFiles = new Set<string>();
 
   for (const file of allTsFiles) {
-    if (file === PACKAGE_REGISTRY_FILE || file.endsWith(".d.ts") || file.endsWith("index.ts")) {
+    if (
+      file === PACKAGE_REGISTRY_FILE ||
+      file.endsWith(".d.ts") ||
+      file.endsWith("index.ts") ||
+      !isRegistryTrackableFile(file)
+    ) {
       continue;
     }
 
@@ -397,9 +513,33 @@ export const scanPackageRegistry = (rootDir: string): PackageScanResult => {
     }
   }
 
+  for (const pkg of packages) {
+    const existingPackage = existingRegistry.packages[pkg.name];
+    const helperFiles = (existingPackage?.files ?? []).filter((file) => {
+      if (!isHelperTagged(file)) {
+        return false;
+      }
+
+      return file.path.startsWith(`${pkg.path}/`) && !ownedFiles.has(file.path);
+    });
+
+    for (const file of helperFiles) {
+      pkg.files.push({
+        ...file,
+        registered: true,
+        tags: [...new Set([...(file.tags ?? []), "helper"])]
+      });
+    }
+  }
+
   const unpackaged: PackageFileRecord[] = [];
   for (const file of allTsFiles) {
-    if (file === PACKAGE_REGISTRY_FILE || file.endsWith(".d.ts") || file.endsWith("index.ts")) {
+    if (
+      file === PACKAGE_REGISTRY_FILE ||
+      file.endsWith(".d.ts") ||
+      file.endsWith("index.ts") ||
+      !isRegistryTrackableFile(file)
+    ) {
       continue;
     }
 
@@ -412,6 +552,19 @@ export const scanPackageRegistry = (rootDir: string): PackageScanResult => {
       path: file,
       registered: existingFileState.get(file)?.registered ?? false,
       tags: existingFileState.get(file)?.tags ?? []
+    });
+  }
+
+  const preservedHelperFiles = existingRegistry.files.filter((file) => isHelperTagged(file));
+  for (const file of preservedHelperFiles) {
+    if (unpackaged.some((entry) => entry.path === file.path)) {
+      continue;
+    }
+
+    unpackaged.push({
+      ...file,
+      registered: true,
+      tags: [...new Set([...(file.tags ?? []), "helper"])]
     });
   }
 
@@ -437,13 +590,18 @@ export const syncPackageRegistry = (rootDir: string): PackageRegistryArtifact =>
   return registry;
 };
 
-const derivePackageIndexView = (record: PackageRecord): {
+type PackageIndexStyle = "decorator" | "functional";
+
+const derivePackageIndexView = (
+  record: PackageRecord,
+  style: PackageIndexStyle = "decorator"
+): {
   imports: string;
   exports: string;
   packageBlock: string;
 } => {
   const ownedFiles = record.files.filter((file) => file.path !== record.index && file.registered);
-  const controllerFiles = ownedFiles.filter((file) => file.path.endsWith(".controller.ts"));
+  const controllerFiles = style === "decorator" ? ownedFiles.filter((file) => file.path.endsWith(".controller.ts")) : [];
   const serviceFiles = ownedFiles.filter((file) => file.path.endsWith(".service.ts"));
   const repositoryFiles = ownedFiles.filter((file) => file.path.endsWith(".repository.ts"));
   const middlewareFiles = ownedFiles.filter((file) => file.path.endsWith(".middleware.ts"));
@@ -451,29 +609,31 @@ const derivePackageIndexView = (record: PackageRecord): {
   const routeHandlerFiles = ownedFiles.filter((file) => file.path.endsWith(".route.handler.ts"));
   const dtoFiles = ownedFiles.filter((file) => file.path.endsWith(".dto.ts"));
   const typeFiles = ownedFiles.filter((file) => file.path.endsWith(".types.ts") || file.path.endsWith(".type.ts"));
-  const importableFiles = [
-    ...controllerFiles,
-    ...serviceFiles,
-    ...repositoryFiles,
-    ...middlewareFiles,
-    ...routeFiles,
-    ...dtoFiles
-  ];
-  const exportFiles = [
-    ...controllerFiles,
-    ...serviceFiles,
-    ...repositoryFiles,
-    ...middlewareFiles,
-    ...routeFiles,
-    ...routeHandlerFiles,
-    ...dtoFiles
-  ];
-  const packageExportFiles = [
-    ...serviceFiles,
-    ...repositoryFiles,
-    ...middlewareFiles,
-    ...dtoFiles
-  ];
+  const importableFiles =
+      style === "functional"
+      ? [...serviceFiles, ...repositoryFiles, ...routeFiles, ...routeHandlerFiles]
+      : [
+          ...controllerFiles,
+          ...serviceFiles,
+          ...repositoryFiles,
+          ...middlewareFiles,
+          ...routeFiles,
+          ...dtoFiles
+        ];
+  const exportFiles =
+      style === "functional"
+      ? [...serviceFiles, ...repositoryFiles, ...routeFiles, ...routeHandlerFiles, ...typeFiles]
+      : [
+          ...controllerFiles,
+          ...serviceFiles,
+          ...repositoryFiles,
+          ...middlewareFiles,
+          ...routeFiles,
+          ...routeHandlerFiles,
+          ...dtoFiles
+        ];
+  const packageExportFiles =
+    style === "functional" ? [] : [...serviceFiles, ...repositoryFiles, ...middlewareFiles, ...dtoFiles];
 
   const renderArray = (values: string[]): string =>
     values.length === 0 ? "[]" : `[\n${values.map((value) => `    ${value}`).join(",\n")}\n  ]`;
@@ -497,25 +657,54 @@ const derivePackageIndexView = (record: PackageRecord): {
     })
     .join("\n");
 
-  const packageBlock = `@Package({
+  const packageBlock = style === "functional"
+    ? `const ${toPascalCase(record.name)}PackageDefinition = {
+  name: "${record.name}",
+  path: "${record.path}",
+  imports: [],
+  exports: ${renderArray([...serviceFiles, ...repositoryFiles].map((file) => inferSymbolFromFile(file.path)))},
+  controllers: [],
+  handlers: ${renderArray(routeHandlerFiles.map((file) => inferSymbolFromFile(file.path)))},
+  services: ${renderArray(serviceFiles.map((file) => inferSymbolFromFile(file.path)))},
+  repositories: ${renderArray(repositoryFiles.map((file) => inferSymbolFromFile(file.path)))},
+  middlewares: [],
+  routes: ${renderArray(routeFiles.map((file) => inferSymbolFromFile(file.path)))},
+  customLinkedHelper: {
+    class: [],
+    function: []
+  }
+};
+
+export const ${toPascalCase(record.name)}Package: SculptorFunctionalPackage = Package(${toPascalCase(record.name)}PackageDefinition)(() => ${toPascalCase(record.name)}PackageDefinition);`
+    : `@Package({
   name: "${record.name}",
   path: "${record.path}",
   imports: [],
   exports: ${renderArray(packageExportFiles.map((file) => inferSymbolFromFile(file.path)))},
   controllers: ${renderArray(controllerFiles.map((file) => inferSymbolFromFile(file.path)))},
+  handlers: ${renderArray(routeHandlerFiles.map((file) => inferSymbolFromFile(file.path)))},
   services: ${renderArray(serviceFiles.map((file) => inferSymbolFromFile(file.path)))},
   repositories: ${renderArray(repositoryFiles.map((file) => inferSymbolFromFile(file.path)))},
   middlewares: ${renderArray(middlewareFiles.map((file) => inferSymbolFromFile(file.path)))},
-  routes: ${renderArray(routeFiles.map((file) => inferSymbolFromFile(file.path)))}
+  routes: ${renderArray(routeFiles.map((file) => inferSymbolFromFile(file.path)))},
+  customLinkedHelper: {
+    class: [],
+    function: []
+  }
 })
 export class ${toPascalCase(record.name)}Package {}`;
 
   return { imports, exports, packageBlock };
 };
 
-export const renderPackageIndex = (record: PackageRecord): string => {
-  const sections = derivePackageIndexView(record);
-  return `/**\n * @generated true\n */\nimport { Package } from "@sculptor/core";\n\n// [sculptor:imports:start]\n${sections.imports}\n// [sculptor:imports:end]\n\n// [sculptor:exports:start]\n${sections.exports}\n// [sculptor:exports:end]\n\n// [sculptor:package:start]\n${sections.packageBlock}\n// [sculptor:package:end]\n`;
+export const renderPackageIndex = (record: PackageRecord, style: PackageIndexStyle = "decorator"): string => {
+  const sections = derivePackageIndexView(record, style);
+  const importLine =
+    style === "functional"
+      ? 'import { Package, type SculptorFunctionalPackage } from "@sculptor/core";'
+      : 'import { Package } from "@sculptor/core";';
+
+  return `/**\n * @generated true\n */\n${importLine}\n\n// [sculptor:imports:start]\n${sections.imports}\n// [sculptor:imports:end]\n\n// [sculptor:exports:start]\n${sections.exports}\n// [sculptor:exports:end]\n\n// [sculptor:package:start]\n${sections.packageBlock}\n// [sculptor:package:end]\n`;
 };
 
 export const inferPackageNameFromPath = (packagePath: string): string =>
@@ -660,6 +849,7 @@ export const upsertFileIntoRegistry = (
 ): PackageRegistryArtifact => {
   const normalizedPath = normalizeRelativePath(filePath);
   const fileType = inferFileType(normalizedPath);
+  const helperTags = isHelperLikeFile(normalizedPath) ? ["helper"] : [];
 
   for (const record of Object.values(registry.packages)) {
     if (normalizedPath === record.index) {
@@ -671,7 +861,7 @@ export const upsertFileIntoRegistry = (
     }
 
     const existingIndex = record.files.findIndex((entry) => entry.path === normalizedPath);
-    const nextFile = createPackageFileRecord(fileType, normalizedPath, true);
+    const nextFile = createPackageFileRecord(fileType, normalizedPath, true, helperTags);
 
     if (existingIndex >= 0) {
       record.files[existingIndex] = nextFile;
@@ -683,7 +873,7 @@ export const upsertFileIntoRegistry = (
   }
 
   const existing = registry.files.findIndex((entry) => entry.path === normalizedPath);
-  const nextFile = createPackageFileRecord(fileType, normalizedPath, true);
+  const nextFile = createPackageFileRecord(fileType, normalizedPath, true, helperTags);
 
   if (existing >= 0) {
     registry.files[existing] = nextFile;
@@ -699,6 +889,7 @@ export const unregisterFileFromRegistry = (
   filePath: string
 ): PackageRegistryArtifact => {
   const normalizedPath = normalizeRelativePath(filePath);
+  const helperTags = isHelperLikeFile(normalizedPath) ? ["helper"] : [];
 
   for (const record of Object.values(registry.packages)) {
     if (normalizedPath === record.index) {
@@ -713,10 +904,13 @@ export const unregisterFileFromRegistry = (
     if (existingIndex >= 0) {
       record.files[existingIndex] = {
         ...record.files[existingIndex]!,
-        registered: false
+        registered: false,
+        tags: [...new Set([...(record.files[existingIndex]?.tags ?? []), ...helperTags])]
       };
     } else {
-      record.files.push(createPackageFileRecord(inferFileType(normalizedPath), normalizedPath, false));
+      record.files.push(
+        createPackageFileRecord(inferFileType(normalizedPath), normalizedPath, false, helperTags)
+      );
     }
 
     return registry;
@@ -726,12 +920,13 @@ export const unregisterFileFromRegistry = (
   if (existingIndex >= 0) {
     registry.files[existingIndex] = {
       ...registry.files[existingIndex]!,
-      registered: false
+      registered: false,
+      tags: [...new Set([...(registry.files[existingIndex]?.tags ?? []), ...helperTags])]
     };
     return registry;
   }
 
-  registry.files.push(createPackageFileRecord(inferFileType(normalizedPath), normalizedPath, false));
+  registry.files.push(createPackageFileRecord(inferFileType(normalizedPath), normalizedPath, false, helperTags));
   return registry;
 };
 
@@ -766,7 +961,8 @@ export const getOwningPackage = (
   return Object.values(registry.packages).find((record) => isFileOwnedByPackage(record, normalizedPath));
 };
 
-export const renderPackageIndexForRecord = (record: PackageRecord): string => renderPackageIndex(record);
+export const renderPackageIndexForRecord = (record: PackageRecord): string =>
+  renderPackageIndex(record, inferPackageIndexStyle(record));
 
 const generatedMarkers = {
   imports: {
@@ -799,8 +995,23 @@ const replaceMarkerBlock = (source: string, section: keyof typeof generatedMarke
   return `${source.slice(0, startIndex + start.length)}\n${content}\n${source.slice(endIndex)}`;
 };
 
-const renderPackageIndexSections = (record: PackageRecord): Record<keyof typeof generatedMarkers, string> => {
-  const sections = derivePackageIndexView(record);
+const inferPackageIndexStyle = (record: PackageRecord, sourceText?: string): PackageIndexStyle => {
+  if (sourceText?.includes("SculptorFunctionalPackage")) {
+    return "functional";
+  }
+
+  if (record.files.some((file) => file.path.endsWith(".controller.ts"))) {
+    return "decorator";
+  }
+
+  return "functional";
+};
+
+const renderPackageIndexSections = (
+  record: PackageRecord,
+  style: PackageIndexStyle = "decorator"
+): Record<keyof typeof generatedMarkers, string> => {
+  const sections = derivePackageIndexView(record, style);
 
   return {
     imports: sections.imports,
@@ -810,15 +1021,14 @@ const renderPackageIndexSections = (record: PackageRecord): Record<keyof typeof 
 };
 
 export const updatePackageIndexForRecord = (filePath: string, record: PackageRecord): void => {
-  const next = renderPackageIndex(record);
-
   if (!fs.existsSync(filePath)) {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, next, "utf8");
+    fs.writeFileSync(filePath, renderPackageIndex(record, inferPackageIndexStyle(record)), "utf8");
     return;
   }
 
   const current = fs.readFileSync(filePath, "utf8");
+  const style = inferPackageIndexStyle(record, current);
 
   for (const section of Object.keys(generatedMarkers) as Array<keyof typeof generatedMarkers>) {
     if (!current.includes(generatedMarkers[section].start) || !current.includes(generatedMarkers[section].end)) {
@@ -829,7 +1039,7 @@ export const updatePackageIndexForRecord = (filePath: string, record: PackageRec
   }
 
   let updated = current;
-  const sections = renderPackageIndexSections(record);
+  const sections = renderPackageIndexSections(record, style);
   updated = replaceMarkerBlock(updated, "imports", sections.imports);
   updated = replaceMarkerBlock(updated, "exports", sections.exports);
   updated = replaceMarkerBlock(updated, "package", sections.package);

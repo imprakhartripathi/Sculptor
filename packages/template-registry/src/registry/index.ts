@@ -20,6 +20,10 @@ import {
   healthControllerSpecTemplate,
   healthDtoTemplate,
   healthPackageIndexTemplate,
+  healthFunctionalRepositoryTemplate,
+  healthFunctionalRouteHandlerTemplate,
+  healthFunctionalRouteTemplate,
+  healthFunctionalServiceTemplate,
   healthRepositoryTemplate,
   healthRouteSpecTemplate,
   healthRouteTemplate,
@@ -45,6 +49,8 @@ import {
   createDecoratorController,
   createPackageResource,
   createFunctionalArtifacts,
+  createFunctionalRepositoryResource,
+  createFunctionalServiceResource,
   createMiddlewareResource,
   createModuleResource,
   createRepositoryResource,
@@ -134,19 +140,27 @@ export const scaffoldProject = (
     "eslint.config.js": eslintConfigTemplate,
     "vitest.config.ts": vitestConfigTemplate,
     ".gitignore": rootGitignoreTemplate,
-    "src/app/health/index.ts": healthPackageIndexTemplate(
-      metadata.mode === "functional" || metadata.mode === "hybrid"
-    ),
-    "src/app/health/health.controller.ts": healthControllerTemplate,
-    "src/app/health/health.service.ts": healthServiceTemplate,
-    "src/app/health/health.repository.ts": healthRepositoryTemplate,
-    "src/app/health/health.dto.ts": healthDtoTemplate,
     "src/app/health/health.types.ts": healthTypesTemplate
   };
 
+  rootFiles["src/app/health/index.ts"] = healthPackageIndexTemplate(metadata.mode);
+
+  if (metadata.mode === "decorator" || metadata.mode === "hybrid") {
+    rootFiles["src/app/health/health.controller.ts"] = healthControllerTemplate;
+    rootFiles["src/app/health/health.service.ts"] = healthServiceTemplate;
+    rootFiles["src/app/health/health.repository.ts"] = healthRepositoryTemplate;
+    rootFiles["src/app/health/health.dto.ts"] = healthDtoTemplate;
+  }
+
   if (metadata.mode === "functional" || metadata.mode === "hybrid") {
-    rootFiles["src/app/health/health.route.ts"] = healthRouteTemplate;
-    rootFiles["src/app/health/health.route.handler.ts"] = healthRouteHandlerTemplate;
+    rootFiles["src/app/health/health.service.ts"] =
+      metadata.mode === "functional" ? healthFunctionalServiceTemplate : healthServiceTemplate;
+    rootFiles["src/app/health/health.repository.ts"] =
+      metadata.mode === "functional" ? healthFunctionalRepositoryTemplate : healthRepositoryTemplate;
+    rootFiles["src/app/health/health.route.ts"] =
+      metadata.mode === "functional" ? healthFunctionalRouteTemplate : healthRouteTemplate;
+    rootFiles["src/app/health/health.route.handler.ts"] =
+      metadata.mode === "functional" ? healthFunctionalRouteHandlerTemplate : healthRouteHandlerTemplate;
   }
 
   if (metadata.testing.generate) {
@@ -173,7 +187,7 @@ export const scaffoldProject = (
 export const generateResourceFiles = (
   kind: GenerateKind,
   name: string,
-  _mode: ScaffoldMode,
+  mode: ScaffoldMode,
   _devServer: DevServer = "tsx",
   outputDir?: string,
   typeVariant: TypeVariant = "type",
@@ -183,32 +197,43 @@ export const generateResourceFiles = (
   const resolvedOutputDir = resolveGeneratorOutputDir(kind, outputDir, name);
   const resolvedName = resolveFileStem(name, resolvedOutputDir);
   const sourceFiles: Record<string, string> = {};
+  const functionalMode = mode === "functional" || functionalRoutes;
 
   switch (kind) {
     case "pkg":
-      Object.assign(sourceFiles, createPackageResource(resolvedName, resolvedOutputDir));
+      Object.assign(sourceFiles, createPackageResource(resolvedName, resolvedOutputDir, functionalMode ? "functional" : mode));
       break;
     case "controller":
-      Object.assign(sourceFiles, createDecoratorController(resolvedName, resolvedOutputDir));
-      if (functionalRoutes) {
+      if (functionalMode) {
+        Object.assign(sourceFiles, createFunctionalArtifacts(resolvedName));
+      } else {
+        Object.assign(sourceFiles, createDecoratorController(resolvedName, resolvedOutputDir));
+      }
+      if (functionalRoutes && !functionalMode) {
         Object.assign(sourceFiles, createFunctionalArtifacts(resolvedName));
       }
       break;
     case "service":
-      Object.assign(sourceFiles, {
-        [`${resolvedOutputDir}/${
-          resolvedName
-        }.service.ts`]: createServiceResource(resolvedName)[`src/app/services/${resolvedName}.service.ts`]
-      });
+      Object.assign(
+        sourceFiles,
+        functionalMode ? createFunctionalServiceResource(resolvedName) : {
+          [`${resolvedOutputDir}/${
+            resolvedName
+          }.service.ts`]: createServiceResource(resolvedName)[`src/app/services/${resolvedName}.service.ts`]
+        }
+      );
       break;
     case "repository":
-      Object.assign(sourceFiles, {
-        [`${resolvedOutputDir}/${
-          resolvedName
-        }.repository.ts`]: createRepositoryResource(resolvedName)[
-          `src/app/repositories/${resolvedName}.repository.ts`
-        ]
-      });
+      Object.assign(
+        sourceFiles,
+        functionalMode ? createFunctionalRepositoryResource(resolvedName) : {
+          [`${resolvedOutputDir}/${
+            resolvedName
+          }.repository.ts`]: createRepositoryResource(resolvedName)[
+            `src/app/repositories/${resolvedName}.repository.ts`
+          ]
+        }
+      );
       break;
     case "dto":
       Object.assign(sourceFiles, {
@@ -294,7 +319,7 @@ export const readModeFromFlags = (
   flags: string[],
   fallback: ScaffoldMode
 ): ScaffoldMode => {
-  if (flags.includes("--functional")) {
+  if (flags.some((flag) => ["--functional", "-f", "-fun", "--fun"].includes(flag))) {
     return "functional";
   }
 

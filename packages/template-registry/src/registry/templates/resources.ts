@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { TypeVariant } from "../utils.js";
+import type { ScaffoldMode, TypeVariant } from "../utils.js";
 import {
   toCamelCase,
   toPascalCase,
@@ -105,6 +105,9 @@ export class ${toPascalCase(name)}Controller {
 `
 });
 
+export const createFunctionalControllerResource = (name: string): Record<string, string> =>
+  createFunctionalArtifacts(name);
+
 export const createFunctionalArtifacts = (
   name: string,
   routeDir = "src/app/routes",
@@ -180,6 +183,24 @@ export const createRepositoryResource = (name: string): Record<string, string> =
 
 @Repository()
 export class ${toPascalCase(name)}Repository {}
+`
+});
+
+export const createFunctionalServiceResource = (name: string): Record<string, string> => ({
+  [`src/app/services/${serviceFileName(name)}`]: `import type { SculptorFunctionalService } from "@sculptor/core";
+
+export const ${toCamelCase(name)}Service: SculptorFunctionalService<{ resource: string }> = () => ({
+  resource: "${name}"
+});
+`
+});
+
+export const createFunctionalRepositoryResource = (name: string): Record<string, string> => ({
+  [`src/app/repositories/${name}.repository.ts`]: `import type { SculptorFunctionalRepository } from "@sculptor/core";
+
+export const ${toCamelCase(name)}Repository: SculptorFunctionalRepository<{ resource: string }> = () => ({
+  resource: "${name}"
+});
 `
 });
 
@@ -260,6 +281,7 @@ export const createTypeResource = (
 export const createPackageResource = (
   name: string,
   outputDir: string,
+  mode: ScaffoldMode,
   options?: {
     includeRouteArtifacts?: boolean;
     routeName?: string;
@@ -274,7 +296,7 @@ export const createPackageResource = (
   const dtoName = `${name}.dto.ts`;
   const typesName = `${name}.types.ts`;
   const routeName = options?.routeName ?? name;
-  const includeRouteArtifacts = options?.includeRouteArtifacts ?? false;
+  const includeRouteArtifacts = options?.includeRouteArtifacts ?? mode !== "decorator";
   const routePrefix = options?.routePrefix ?? `${toRoutePath(routeName)}/route`;
   const routeNameFile = `${routeName}.route.ts`;
   const routeHandlerName = `${routeName}.route.handler.ts`;
@@ -286,15 +308,140 @@ export const createPackageResource = (
   const routeSymbol = `${toCamelCase(routeName)}`;
   const routeHandlerSymbol = `${toCamelCase(routeName)}Handler`;
   const routeErrorHandlerSymbol = `${toCamelCase(routeName)}ErrorHandler`;
+
+  if (mode === "functional") {
+    return {
+      [`${packageRoot}/index.ts`]: `/**
+ * @generated true
+ */
+import { Package, type SculptorFunctionalPackage } from "@sculptor/core";
+
+// [sculptor:imports:start]
+import { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";
+import { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";
+import { ${routeSymbol} } from "./${routeNameFile.replace(/\.ts$/, ".js")}";
+import { ${routeHandlerSymbol} } from "./${routeHandlerName.replace(/\.ts$/, ".js")}";
+// [sculptor:imports:end]
+
+// [sculptor:exports:start]
+export * from "./${serviceName.replace(/\.ts$/, ".js")}";
+export * from "./${repositoryName.replace(/\.ts$/, ".js")}";
+export * from "./${routeNameFile.replace(/\.ts$/, ".js")}";
+export * from "./${routeHandlerName.replace(/\.ts$/, ".js")}";
+export type { ${typeSymbol} } from "./${typesName.replace(/\.ts$/, ".js")}";
+// [sculptor:exports:end]
+
+// [sculptor:package:start]
+const ${toPascalCase(packageFolder)}PackageDefinition = {
+  name: "${packageFolder}",
+  path: "${packageRoot}",
+  imports: [],
+  exports: [${serviceSymbol}, ${repositorySymbol}],
+  controllers: [],
+  handlers: [${routeHandlerSymbol}],
+  services: [${serviceSymbol}],
+  repositories: [${repositorySymbol}],
+  middlewares: [],
+  routes: [${routeSymbol}],
+  customLinkedHelper: {
+    class: [],
+    function: []
+  }
+};
+
+export const ${toPascalCase(packageFolder)}Package: SculptorFunctionalPackage = Package(${toPascalCase(packageFolder)}PackageDefinition)(() => ${toPascalCase(packageFolder)}PackageDefinition);
+// [sculptor:package:end]
+`,
+      [`${packageRoot}/${serviceName}`]: `import type { SculptorFunctionalService } from "@sculptor/core";
+
+export const ${serviceSymbol.charAt(0).toLowerCase() + serviceSymbol.slice(1)}: SculptorFunctionalService<{ resource: string }> = () => ({
+  resource: "${name}"
+});
+`,
+      [`${packageRoot}/${repositoryName}`]: `import type { SculptorFunctionalRepository } from "@sculptor/core";
+
+export const ${repositorySymbol.charAt(0).toLowerCase() + repositorySymbol.slice(1)}: SculptorFunctionalRepository<{ resource: string }> = () => ({
+  resource: "${name}"
+});
+`,
+      [`${packageRoot}/${typesName}`]: `export type ${typeSymbol} = {
+  resource: string;
+};
+`,
+      [`${packageRoot}/${routeNameFile}`]: `import { FunctionalRouter } from "@sculptor/router";
+
+import { ${routeErrorHandlerSymbol}, ${routeHandlerSymbol} } from "./${routeHandlerName.replace(/\.ts$/, ".js")}";
+
+export const ${routeSymbol} = FunctionalRouter("/${routePrefix}");
+
+${routeSymbol}.get(${routeHandlerSymbol});
+${routeSymbol}.at("/ping").get(${routeHandlerSymbol});
+${routeSymbol}.use(${routeErrorHandlerSymbol});
+`,
+      [`${packageRoot}/${routeHandlerName}`]: `import { normalizeError } from "@sculptor/core";
+import type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError, SculptorFunctionalHandler } from "@sculptor/core";
+
+import { ${serviceSymbol.charAt(0).toLowerCase() + serviceSymbol.slice(1)} } from "./${serviceName.replace(/\.ts$/, ".js")}";
+
+export const ${routeHandlerSymbol}: SculptorFunctionalHandler<void> = async (
+  req: Req,
+  res: Res,
+  next: Nxt
+): Promise<void> => {
+  try {
+    if (req.path.endsWith("/ping")) {
+      res.json({ message: "pong" });
+      return;
+    }
+
+    res.json(${serviceSymbol.charAt(0).toLowerCase() + serviceSymbol.slice(1)}());
+  } catch (error) {
+    next(normalizeError(error));
+  }
+};
+
+export const ${routeErrorHandlerSymbol}: FrameworkErrorHandler = (
+  error: SculptorError,
+  _req: Req,
+  res: Res,
+  next: Nxt
+): void => {
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+
+  res.status(500).json({
+    message: error.message,
+    code: error.code,
+    status: error.status
+  });
+};
+`
+    };
+  }
+
+  if (mode === "decorator") {
+    return {
+      [`${packageRoot}/index.ts`]: `/**\n * @generated true\n */\nimport { Package } from "@sculptor/core";\n\n// [sculptor:imports:start]\nimport { ${controllerSymbol} } from "./${controllerName.replace(/\.ts$/, ".js")}";\nimport { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";\nimport { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";\nimport { ${dtoSymbol} } from "./${dtoName.replace(/\.ts$/, ".js")}";\n// [sculptor:imports:end]\n\n// [sculptor:exports:start]\nexport * from "./${controllerName.replace(/\.ts$/, ".js")}";\nexport * from "./${serviceName.replace(/\.ts$/, ".js")}";\nexport * from "./${repositoryName.replace(/\.ts$/, ".js")}";\nexport * from "./${dtoName.replace(/\.ts$/, ".js")}";\nexport type { ${typeSymbol} } from "./${typesName.replace(/\.ts$/, ".js")}";\n// [sculptor:exports:end]\n\n// [sculptor:package:start]\n@Package({\n  name: "${packageFolder}",\n  path: "${packageRoot}",\n  imports: [],\n  exports: [${serviceSymbol}, ${repositorySymbol}, ${dtoSymbol}],\n  controllers: [${controllerSymbol}],\n  services: [${serviceSymbol}],\n  repositories: [${repositorySymbol}],\n  middlewares: [],\n  routes: []\n})\nexport class ${toPascalCase(packageFolder)}Package {}\n// [sculptor:package:end]\n`,
+      [`${packageRoot}/index.ts`]: `/**\n * @generated true\n */\nimport { Package } from "@sculptor/core";\n\n// [sculptor:imports:start]\nimport { ${controllerSymbol} } from "./${controllerName.replace(/\.ts$/, ".js")}";\nimport { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";\nimport { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";\nimport { ${dtoSymbol} } from "./${dtoName.replace(/\.ts$/, ".js")}";\n// [sculptor:imports:end]\n\n// [sculptor:exports:start]\nexport * from "./${controllerName.replace(/\.ts$/, ".js")}";\nexport * from "./${serviceName.replace(/\.ts$/, ".js")}";\nexport * from "./${repositoryName.replace(/\.ts$/, ".js")}";\nexport * from "./${dtoName.replace(/\.ts$/, ".js")}";\nexport type { ${typeSymbol} } from "./${typesName.replace(/\.ts$/, ".js")}";\n// [sculptor:exports:end]\n\n// [sculptor:package:start]\n@Package({\n  name: "${packageFolder}",\n  path: "${packageRoot}",\n  imports: [],\n  exports: [${serviceSymbol}, ${repositorySymbol}, ${dtoSymbol}],\n  controllers: [${controllerSymbol}],\n  handlers: [],\n  services: [${serviceSymbol}],\n  repositories: [${repositorySymbol}],\n  middlewares: [],\n  routes: [],\n  customLinkedHelper: {\n    class: [],\n    function: []\n  }\n})\nexport class ${toPascalCase(packageFolder)}Package {}\n// [sculptor:package:end]\n`,
+      [`${packageRoot}/${controllerName}`]: `import { AutoInject, Controller, Get } from "@sculptor/core";\n\nimport { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";\n\n@Controller("/${packageFolder}")\nexport class ${controllerSymbol} {\n  @AutoInject(${serviceSymbol})\n  private readonly ${toCamelCase(name)}Service!: ${toPascalCase(name)}Service;\n\n  @Get("/")\n  findAll() {\n    return this.${toCamelCase(name)}Service.status();\n  }\n}\n`,
+      [`${packageRoot}/${serviceName}`]: `import { AutoInject, Service } from "@sculptor/core";\n\nimport { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";\n\n@Service()\nexport class ${serviceSymbol} {\n  @AutoInject(${repositorySymbol})\n  private readonly ${toCamelCase(name)}Repository!: ${toPascalCase(name)}Repository;\n\n  status() {\n    return this.${toCamelCase(name)}Repository.status();\n  }\n}\n`,
+      [`${packageRoot}/${repositoryName}`]: `import { Repository } from "@sculptor/core";\n\n@Repository()\nexport class ${repositorySymbol} {\n  status() {\n    return { resource: "${name}" };\n  }\n}\n`,
+      [`${packageRoot}/${dtoName}`]: `export class ${dtoSymbol} {\n  resource = "${name}";\n}\n`,
+      [`${packageRoot}/${typesName}`]: `export type ${typeSymbol} = {\n  status: string;\n};\n`
+    };
+  }
+
   const routeArtifacts = includeRouteArtifacts
     ? {
         [`${packageRoot}/${routeNameFile}`]: `import { FunctionalRouter } from "@sculptor/router";\n\nimport { ${routeErrorHandlerSymbol}, ${routeHandlerSymbol} } from "./${routeHandlerName.replace(/\.ts$/, ".js")}";\n\nexport const ${routeSymbol} = FunctionalRouter("/${routePrefix}");\n\n${routeSymbol}.get(${routeHandlerSymbol});\n${routeSymbol}.at("/ping").get(${routeHandlerSymbol});\n${routeSymbol}.use(${routeErrorHandlerSymbol});\n`,
-        [`${packageRoot}/${routeHandlerName}`]: `import { normalizeError } from "@sculptor/core";\nimport type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError } from "@sculptor/core";\n\nexport const ${routeHandlerSymbol} = async (\n  req: Req,\n  res: Res,\n  next: Nxt\n): Promise<void> => {\n  try {\n    res.json({\n      status: "ok",\n      resource: "${name}",\n      path: req.path\n    });\n  } catch (error) {\n    next(normalizeError(error));\n  }\n};\n\nexport const ${routeErrorHandlerSymbol}: FrameworkErrorHandler = (\n  error: SculptorError,\n  _req: Req,\n  res: Res,\n  next: Nxt\n): void => {\n  if (res.headersSent) {\n    next(error);\n    return;\n  }\n\n  res.status(500).json({\n    message: error.message,\n    code: error.code,\n    status: error.status\n  });\n};\n`
+        [`${packageRoot}/${routeHandlerName}`]: `import { normalizeError } from "@sculptor/core";\nimport type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError, SculptorFunctionalHandler } from "@sculptor/core";\n\nexport const ${routeHandlerSymbol}: SculptorFunctionalHandler<void> = async (\n  req: Req,\n  res: Res,\n  next: Nxt\n): Promise<void> => {\n  try {\n    res.json({\n      status: "ok",\n      resource: "${name}",\n      path: req.path\n    });\n  } catch (error) {\n    next(normalizeError(error));\n  }\n};\n\nexport const ${routeErrorHandlerSymbol}: FrameworkErrorHandler = (\n  error: SculptorError,\n  _req: Req,\n  res: Res,\n  next: Nxt\n): void => {\n  if (res.headersSent) {\n    next(error);\n    return;\n  }\n\n  res.status(500).json({\n    message: error.message,\n    code: error.code,\n    status: error.status\n  });\n};\n`
       }
     : {};
 
   return {
-    [`${packageRoot}/index.ts`]: `/**\n * @generated true\n */\nimport { Package } from "@sculptor/core";\n\n// [sculptor:imports:start]\nimport { ${controllerSymbol} } from "./${controllerName.replace(/\.ts$/, ".js")}";\nimport { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";\nimport { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";\nimport { ${dtoSymbol} } from "./${dtoName.replace(/\.ts$/, ".js")}";\n${includeRouteArtifacts ? `import { ${routeSymbol} } from "./${routeNameFile.replace(/\.ts$/, ".js")}";\n` : ""}// [sculptor:imports:end]\n\n// [sculptor:exports:start]\nexport * from "./${controllerName.replace(/\.ts$/, ".js")}";\nexport * from "./${serviceName.replace(/\.ts$/, ".js")}";\nexport * from "./${repositoryName.replace(/\.ts$/, ".js")}";\nexport * from "./${dtoName.replace(/\.ts$/, ".js")}";\nexport type { ${typeSymbol} } from "./${typesName.replace(/\.ts$/, ".js")}";\n${includeRouteArtifacts ? `export * from "./${routeNameFile.replace(/\.ts$/, ".js")}";\nexport * from "./${routeHandlerName.replace(/\.ts$/, ".js")}";\n` : ""}// [sculptor:exports:end]\n\n// [sculptor:package:start]\n@Package({\n  name: "${packageFolder}",\n  path: "${packageRoot}",\n  imports: [],\n  exports: [${serviceSymbol}, ${repositorySymbol}, ${dtoSymbol}],\n  controllers: [${controllerSymbol}],\n  services: [${serviceSymbol}],\n  repositories: [${repositorySymbol}],\n  middlewares: [],\n  routes: [${includeRouteArtifacts ? routeSymbol : ""}]\n})\nexport class ${toPascalCase(packageFolder)}Package {}\n// [sculptor:package:end]\n`,
+    [`${packageRoot}/index.ts`]: `/**\n * @generated true\n */\nimport { Package } from "@sculptor/core";\n\n// [sculptor:imports:start]\nimport { ${controllerSymbol} } from "./${controllerName.replace(/\.ts$/, ".js")}";\nimport { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";\nimport { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";\nimport { ${dtoSymbol} } from "./${dtoName.replace(/\.ts$/, ".js")}";\n${includeRouteArtifacts ? `import { ${routeSymbol} } from "./${routeNameFile.replace(/\.ts$/, ".js")}";\nimport { ${routeHandlerSymbol} } from "./${routeHandlerName.replace(/\.ts$/, ".js")}";\n` : ""}// [sculptor:imports:end]\n\n// [sculptor:exports:start]\nexport * from "./${controllerName.replace(/\.ts$/, ".js")}";\nexport * from "./${serviceName.replace(/\.ts$/, ".js")}";\nexport * from "./${repositoryName.replace(/\.ts$/, ".js")}";\nexport * from "./${dtoName.replace(/\.ts$/, ".js")}";\nexport type { ${typeSymbol} } from "./${typesName.replace(/\.ts$/, ".js")}";\n${includeRouteArtifacts ? `export * from "./${routeNameFile.replace(/\.ts$/, ".js")}";\nexport * from "./${routeHandlerName.replace(/\.ts$/, ".js")}";\n` : ""}// [sculptor:exports:end]\n\n// [sculptor:package:start]\n@Package({\n  name: "${packageFolder}",\n  path: "${packageRoot}",\n  imports: [],\n  exports: [${serviceSymbol}, ${repositorySymbol}, ${dtoSymbol}],\n  controllers: [${controllerSymbol}],\n  handlers: [${includeRouteArtifacts ? routeHandlerSymbol : ""}],\n  services: [${serviceSymbol}],\n  repositories: [${repositorySymbol}],\n  middlewares: [],\n  routes: [${includeRouteArtifacts ? routeSymbol : ""}],\n  customLinkedHelper: {\n    class: [],\n    function: []\n  }\n})\nexport class ${toPascalCase(packageFolder)}Package {}\n// [sculptor:package:end]\n`,
     [`${packageRoot}/${controllerName}`]: `import { AutoInject, Controller, Get } from "@sculptor/core";\n\nimport { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";\n\n@Controller("/${packageFolder}")\nexport class ${controllerSymbol} {\n  @AutoInject(${serviceSymbol})\n  private readonly ${toCamelCase(name)}Service!: ${toPascalCase(name)}Service;\n\n  @Get("/")\n  findAll() {\n    return this.${toCamelCase(name)}Service.status();\n  }\n}\n`,
     [`${packageRoot}/${serviceName}`]: `import { AutoInject, Service } from "@sculptor/core";\n\nimport { ${repositorySymbol} } from "./${repositoryName.replace(/\.ts$/, ".js")}";\n\n@Service()\nexport class ${serviceSymbol} {\n  @AutoInject(${repositorySymbol})\n  private readonly ${toCamelCase(name)}Repository!: ${toPascalCase(name)}Repository;\n\n  status() {\n    return this.${toCamelCase(name)}Repository.status();\n  }\n}\n`,
     [`${packageRoot}/${repositoryName}`]: `import { Repository } from "@sculptor/core";\n\n@Repository()\nexport class ${repositorySymbol} {\n  status() {\n    return { resource: "${name}" };\n  }\n}\n`,

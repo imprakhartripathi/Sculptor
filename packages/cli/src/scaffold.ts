@@ -162,7 +162,7 @@ export const readModeFromFlags = (
   flags: string[],
   fallback: ScaffoldMode
 ): ScaffoldMode => {
-  if (flags.includes("--functional")) {
+  if (flags.some((flag) => ["--functional", "-f", "-fun", "--fun"].includes(flag))) {
     return "functional";
   }
 

@@ -758,7 +758,7 @@ describe("cli", () => {
     expect(fs.existsSync(path.join(cwd, "src/app/handlers/profile.route.handler.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/handlers/profile.handler.ts"))).toBe(false);
     expect(fs.existsSync(path.join(cwd, "src/app/routes/session.route.ts"))).toBe(true);
-    expect(fs.existsSync(path.join(cwd, "src/app/controllers/session.controller.ts"))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, "src/app/controllers/session.controller.ts"))).toBe(false);
     expect(fs.existsSync(path.join(cwd, "src/app/handlers/session.route.handler.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/app/controllers/profile.controller.ts"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, "src/tests/profile.controller.spec.ts"))).toBe(true);

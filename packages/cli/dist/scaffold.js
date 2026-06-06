@@ -139,7 +139,7 @@ sc generate package user
 - route generators always emit the paired functional route and handler files
 `;
 export const readModeFromFlags = (flags, fallback) => {
-    if (flags.includes("--functional")) {
+    if (flags.some((flag) => ["--functional", "-f", "-fun", "--fun"].includes(flag))) {
         return "functional";
     }
     if (flags.includes("--decorator")) {
