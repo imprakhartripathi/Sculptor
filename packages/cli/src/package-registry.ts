@@ -646,7 +646,7 @@ const derivePackageIndexView = (
     })
     .join("\n");
 
-  const exports = [...exportFiles, ...typeFiles]
+  const exports = exportFiles
     .map((file) => {
       const relative = normalizeRelativePath(path.posix.relative(record.path, file.path)).replace(/\.ts$/, ".js");
       if (file.path.endsWith(".types.ts") || file.path.endsWith(".type.ts")) {

@@ -325,20 +325,20 @@ export const healthTypesTemplate = `export type HealthTypes = {
 `;
 export const healthFunctionalServiceTemplate = `import type { SculptorFunctionalService } from "@sculptor/core";
 
-export const healthService: SculptorFunctionalService<{ status: string }> = () => ({
+export const HealthService: SculptorFunctionalService<{ status: string }> = () => ({
   status: "ok"
 });
 `;
 export const healthFunctionalRepositoryTemplate = `import type { SculptorFunctionalRepository } from "@sculptor/core";
 
-export const healthRepository: SculptorFunctionalRepository<{ status: string }> = () => ({
+export const HealthRepository: SculptorFunctionalRepository<{ status: string }> = () => ({
   status: "ok"
 });
 `;
 export const healthFunctionalRouteHandlerTemplate = `import { normalizeError } from "@sculptor/core";
 import type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError, SculptorFunctionalHandler } from "@sculptor/core";
 
-import { healthService } from "./health.service.js";
+import { HealthService } from "./health.service.js";
 
 export const healthHandler: SculptorFunctionalHandler<void> = async (
   req: Req,
@@ -351,7 +351,7 @@ export const healthHandler: SculptorFunctionalHandler<void> = async (
       return;
     }
 
-    res.json(healthService());
+    res.json(HealthService());
   } catch (error) {
     next(normalizeError(error));
   }
@@ -391,8 +391,8 @@ export const healthFunctionalPackageIndexTemplate = () => `/**
 import { Package, type SculptorFunctionalPackage } from "@sculptor/core";
 
 // [sculptor:imports:start]
-import { healthService } from "./health.service.js";
-import { healthRepository } from "./health.repository.js";
+import { HealthService } from "./health.service.js";
+import { HealthRepository } from "./health.repository.js";
 import { health } from "./health.route.js";
 import { healthHandler } from "./health.route.handler.js";
 // [sculptor:imports:end]
@@ -410,11 +410,11 @@ const HealthPackageDefinition = {
   name: "health",
   path: "src/app/health",
   imports: [],
-  exports: [healthService, healthRepository],
+  exports: [HealthService, HealthRepository],
   controllers: [],
   handlers: [healthHandler],
-  services: [healthService],
-  repositories: [healthRepository],
+  services: [HealthService],
+  repositories: [HealthRepository],
   middlewares: [],
   routes: [health],
   customLinkedHelper: {

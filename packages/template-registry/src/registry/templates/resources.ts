@@ -354,13 +354,13 @@ export const ${toPascalCase(packageFolder)}Package: SculptorFunctionalPackage = 
 `,
       [`${packageRoot}/${serviceName}`]: `import type { SculptorFunctionalService } from "@sculptor/core";
 
-export const ${serviceSymbol.charAt(0).toLowerCase() + serviceSymbol.slice(1)}: SculptorFunctionalService<{ resource: string }> = () => ({
+export const ${serviceSymbol}: SculptorFunctionalService<{ resource: string }> = () => ({
   resource: "${name}"
 });
 `,
       [`${packageRoot}/${repositoryName}`]: `import type { SculptorFunctionalRepository } from "@sculptor/core";
 
-export const ${repositorySymbol.charAt(0).toLowerCase() + repositorySymbol.slice(1)}: SculptorFunctionalRepository<{ resource: string }> = () => ({
+export const ${repositorySymbol}: SculptorFunctionalRepository<{ resource: string }> = () => ({
   resource: "${name}"
 });
 `,
@@ -381,7 +381,7 @@ ${routeSymbol}.use(${routeErrorHandlerSymbol});
       [`${packageRoot}/${routeHandlerName}`]: `import { normalizeError } from "@sculptor/core";
 import type { FrameworkErrorHandler, Nxt, Req, Res, SculptorError, SculptorFunctionalHandler } from "@sculptor/core";
 
-import { ${serviceSymbol.charAt(0).toLowerCase() + serviceSymbol.slice(1)} } from "./${serviceName.replace(/\.ts$/, ".js")}";
+import { ${serviceSymbol} } from "./${serviceName.replace(/\.ts$/, ".js")}";
 
 export const ${routeHandlerSymbol}: SculptorFunctionalHandler<void> = async (
   req: Req,
@@ -394,7 +394,7 @@ export const ${routeHandlerSymbol}: SculptorFunctionalHandler<void> = async (
       return;
     }
 
-    res.json(${serviceSymbol.charAt(0).toLowerCase() + serviceSymbol.slice(1)}());
+    res.json(${serviceSymbol}());
   } catch (error) {
     next(normalizeError(error));
   }

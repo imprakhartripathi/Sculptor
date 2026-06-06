@@ -4,7 +4,7 @@ The SculptorTS DI package provides explicit, decorator-driven dependency injecti
 
 ## Release Line
 
-- Initial release: `0.1.1`
+- Current package version: `0.1.3`
 - This package is part of the `v0.3.x` pre-release package-aware architecture line.
 
 ## What This Package Does

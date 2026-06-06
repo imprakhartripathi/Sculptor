@@ -25,7 +25,7 @@ If you are new to the framework, read this file first, then move into the packag
 
 ## Release Notes
 
-Current pre-release line: `v0.3.5`
+Current pre-release line: `v0.3.6`
 
 - `@sculptor/core`
 - `@sculptor/router`
@@ -33,7 +33,7 @@ Current pre-release line: `v0.3.5`
 - `@sculptor/paws`
 - `@sculptor/cli`
 - `@sculptor/template-registry`
-- `@sculptor/di` starts on `0.1.1`
+- `@sculptor/di` starts on `0.1.3`
 
 This line adds:
 
