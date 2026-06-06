@@ -4,8 +4,8 @@ The SculptorTS DI package provides explicit, decorator-driven dependency injecti
 
 ## Release Line
 
-- Current package version: `0.1.3`
-- This package is part of the `v0.3.x` pre-release package-aware architecture line.
+- Current package version: `0.1.7`
+- This package is part of the `v0.3.10` pre-release package-aware architecture line.
 
 ## What This Package Does
 
@@ -14,6 +14,7 @@ The SculptorTS DI package provides explicit, decorator-driven dependency injecti
 - Supports constructor and property injection
 - Detects circular dependencies
 - Exposes package metadata for package-aware runtime composition
+- Exposes functional package, service, repository, controller, and handler types for generator output
 
 ## Explicit Injection Rule
 
@@ -28,6 +29,11 @@ import {
   AutoInject,
   Container,
   Package,
+  SculptorFunctionalController,
+  SculptorFunctionalHandler,
+  SculptorFunctionalPackage,
+  SculptorFunctionalRepository,
+  SculptorFunctionalService,
   Repository,
   Service,
   Middleware,
@@ -37,7 +43,7 @@ import {
 
 ## Package Metadata
 
-`@Package({...})` marks a package index class as the package contract.
+`@Package({...})` marks a package index as the package contract.
 
 Metadata includes:
 
@@ -46,10 +52,16 @@ Metadata includes:
 - `imports`
 - `exports`
 - `controllers`
+- `handlers`
 - `services`
 - `repositories`
 - `middlewares`
 - `routes`
+- `customLinkedHelper`
+
+Package metadata can be emitted as a class-based index or a functional package factory, depending on the scaffold mode.
+
+Functional services and repositories are valid package metadata for generated output. The runtime only treats constructable tokens as DI providers.
 
 ## Container Behavior
 

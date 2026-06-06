@@ -475,7 +475,7 @@ export const HealthPackage: SculptorFunctionalPackage = Package(HealthPackageDef
   imports: [],
   exports: [HealthService, HealthRepository, HealthDto],
   controllers: [HealthController],
-  handlers: [],
+  handlers: [${mode === "hybrid" ? "healthHandler" : ""}],
   services: [HealthService],
   repositories: [HealthRepository],
   middlewares: [],

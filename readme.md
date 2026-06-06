@@ -2,7 +2,7 @@
 
 SculptorTS is a TypeScript-first, Express-based framework for building APIs with decorator controllers, functional routers, or both together.
 
-The v0.3.x pre-release line introduces a package-aware architecture that is:
+The `v0.3.10` pre-release line introduces a package-aware architecture that is:
 
 - explicit
 - registry-aware
@@ -25,7 +25,7 @@ If you are new to the framework, read this file first, then move into the packag
 
 ## Release Notes
 
-Current pre-release line: `v0.3.6`
+Current pre-release line: `v0.3.10`
 
 - `@sculptor/core`
 - `@sculptor/router`
@@ -33,19 +33,23 @@ Current pre-release line: `v0.3.6`
 - `@sculptor/paws`
 - `@sculptor/cli`
 - `@sculptor/template-registry`
-- `@sculptor/di` starts on `0.1.3`
+- `@sculptor/di` starts on `0.1.7`
 
 This line adds:
 
-- `@Package(...)` package indexes
-- `sculptor.packages.json` as a tracked framework artifact
+- `@Package(...)` package indexes and functional package factories
+- `sculptor.packages.json` as a tracked framework artifact with ownership, registration, and helper tagging
 - explicit DI with `@Service()`, `@Repository()`, `@Middleware()`, and `@AutoInject()`
-- `sc doctor` for calm diagnostics
-- `sc agents` and `sc agents refresh` for `AGENTS.md`
+- class, functional, and hybrid generation modes
 - package-aware generators and registry commands
 - exact package naming with no hidden singular/plural normalization
+- exact file resolution for `sc reg`, `sc ureg`, and `sc rm`
+- `sc reg pkg <name>` and `sc rm pkg <name>` for package registry management
 - safer generated marker blocks for package index updates
+- `sc doctor` for calm diagnostics
+- `sc agents` and `sc agents refresh` for `AGENTS.md`
 - `sc update` restricted to the globally installed `@sculptor/cli`
+- clean CLI errors without raw stack traces
 - `req.ctx` as the default request context on Sculptor-bootstrapped apps
 
 This is a pre-release path to `v1.0.0`. The final stable line will be `1.x`, and expect minor changes and fixes until then.
@@ -75,6 +79,7 @@ Each package owns:
 - scanner metadata
 - package metadata
 - rebuild metadata
+- helper-linked file metadata
 
 The package index lives at `src/<package>/index.ts` and is decorated with `@Package({...})`.
 
@@ -92,6 +97,12 @@ The supported app styles remain:
 - hybrid
 
 Packages are first-class, but they are still optional. Functional and unpackaged code continue to work.
+
+Generation defaults are mode-aware:
+
+- class mode stays class-based by default
+- functional mode emits functional services, repositories, routes, and package factories
+- hybrid mode keeps class-based defaults unless `--functional`, `-f`, `-fun`, or `--fun` is requested
 
 ## How The Framework Is Structured
 
@@ -131,6 +142,7 @@ What it does:
 - supports constructor and property injection
 - detects circular dependencies
 - exposes package metadata for package-aware runtime composition
+- exposes functional package and handler types for generator output and hybrid packages
 
 How it is used:
 
@@ -210,6 +222,9 @@ What it does:
 - generates `AGENTS.md`
 - updates only the globally installed `@sculptor/cli` with `sc update`
 - recovers missing template-registry installs when global installs are incomplete
+- resolves files exactly for register/unregister/remove workflows
+- supports `sc reg pkg`, `sc rm pkg`, and package diagnostics with exact package names
+- keeps CLI errors concise and user-facing
 
 Core command families:
 
@@ -218,6 +233,24 @@ Core command families:
 - `sc g` / `sc generate`
 - `sc pkg` / `sc package`
 - `sc ls` / `sc list`
+- `sc reg` / `sc register` / `sc r`
+- `sc ureg` / `sc unreg` / `sc unregister` / `sc ur`
+- `sc rm` / `sc remove`
+- `sc doctor`
+- `sc update`
+
+Useful generator flags:
+
+- `--functional`
+- `-f`
+- `-fun`
+- `--fun`
+- `-p`
+- `--p`
+- `-pkg`
+- `--pkg`
+- `-package`
+- `--package`
 - `sc reg` / `sc register` / `sc r`
 - `sc ureg` / `sc unreg` / `sc unregister` / `sc ur`
 - `sc rm` / `sc remove`

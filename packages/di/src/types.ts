@@ -21,11 +21,11 @@ export interface PackageDefinition {
   name: string;
   path: string;
   imports?: PackageToken[];
-  exports?: ProviderToken[];
+  exports?: PackageToken[];
   controllers?: ControllerClass[];
   handlers?: PackageToken[];
-  services?: ProviderToken[];
-  repositories?: ProviderToken[];
+  services?: PackageToken[];
+  repositories?: PackageToken[];
   middlewares?: ProviderToken[];
   routes?: RouterSource[];
   customLinkedHelper?: {

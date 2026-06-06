@@ -430,6 +430,36 @@ describe("cli", () => {
     expect(pkgOutput).not.toContain("users");
   });
 
+  it("includes the route handler import in hybrid package generation", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    const cwd = projectRoot;
+    fs.writeFileSync(
+      path.join(cwd, "sculptor.json"),
+      JSON.stringify(
+        {
+          project: { srcRoot: "src", entryFile: "main.ts", devServer: "tsx" },
+          routing: { style: "hybrid" },
+          testing: { generate: true, framework: "vitest" },
+          frameworkLock: true
+        },
+        null,
+        2
+      )
+    );
+
+    await runCli(["node", "sc", "g", "pkg", "user"], {
+      cwd,
+      log: () => undefined,
+      error: () => undefined,
+      spawn: vi.fn(() => ({ status: 0 })) as never
+    });
+
+    const packageIndex = fs.readFileSync(path.join(cwd, "src", "app", "user", "index.ts"), "utf8");
+    expect(packageIndex).toContain('import { userHandler } from "./user.route.handler.js";');
+    expect(packageIndex).toContain("handlers: [");
+    expect(packageIndex).toContain("routes: [");
+  });
+
   it("supports package command and flag aliases", async () => {
     expect(getPackageFlagValue(["-p=user"])).toBe("user");
     expect(getPackageFlagValue(["--p=user"])).toBe("user");

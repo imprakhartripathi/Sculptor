@@ -2,22 +2,28 @@
 
 This changelog documents the current Sculptor release line and the historical ranges that remain relevant for compatibility and support conversations.
 
-## v0.3.x Pre-Release
+## v0.3.10 Pre-Release
 
-The `v0.3.x` pre-release line is the package-aware Sculptor architecture.
+The `v0.3.10` pre-release line is the current package-aware Sculptor architecture.
 
 Highlights:
 
 - package indexes are now first-class via `@Package({...})`
-- `sculptor.packages.json` tracks package ownership and file tracking
+- `sculptor.packages.json` tracks package ownership, registration state, and helper-tagged files
 - explicit DI is available through `@sculptor/di`
 - `req.ctx` is available by default in Sculptor-bootstrapped apps
 - `sc doctor` provides calm diagnostics and compatibility checks
 - `sc agents` and `sc agents refresh` generate `AGENTS.md`
 - package-aware generation keeps package contracts and registry metadata aligned
+- functional packages are supported alongside class-based and hybrid packages
+- package generators emit functional services, repositories, handlers, and package factories when requested
+- `sc reg pkg <name>`, `sc rm pkg <name>`, and exact file registration flows now align with package ownership
+- `sc reg`, `sc ureg`, and `sc rm` resolve file paths exactly and keep the central registry in sync
 - `sc update` now updates only the globally installed `@sculptor/cli`
 - generated package indexes use deterministic marker blocks instead of full-file rewrites
-- the CLI supports package aliases such as `pkg` / `package`, `ls` / `list`, and `reg` / `register` / `r`
+- the CLI supports package aliases such as `pkg` / `package`, `ls` / `list`, `reg` / `register` / `r`, `ureg` / `unreg` / `unregister` / `ur`, and `rm` / `remove`
+- package-target flags support `-p`, `--p`, `-pkg`, `--pkg`, `-package`, and `--package`
+- CLI errors are surfaced cleanly without raw stack traces
 - hybrid apps continue to support decorator, functional, and mixed composition
 
 This is still the pre-release phase, so changes may continue to land as the package contracts settle on the way to `v1.0.0`.
@@ -30,7 +36,7 @@ Current pre-release package family:
 - `@sculptor/paws`
 - `@sculptor/cli`
 - `@sculptor/template-registry`
-- `@sculptor/di` begins at `0.1.1`
+- `@sculptor/di` begins at `0.1.7`
 
 ## Legacy Compatibility Notes
 

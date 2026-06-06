@@ -270,10 +270,6 @@ const isRegistryManagedGeneratedFile = (filePath: string): boolean => {
     return false;
   }
 
-  if (normalized.endsWith(".route.handler.ts")) {
-    return false;
-  }
-
   return /\.(controller|service|repository|middleware|module|dto|route|type|types|interface|class|enum)\.ts$/.test(
     normalized
   );

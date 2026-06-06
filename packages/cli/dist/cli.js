@@ -148,9 +148,6 @@ const isRegistryManagedGeneratedFile = (filePath) => {
     if (normalized.endsWith(".spec.ts")) {
         return false;
     }
-    if (normalized.endsWith(".route.handler.ts")) {
-        return false;
-    }
     return /\.(controller|service|repository|middleware|module|dto|route|type|types|interface|class|enum)\.ts$/.test(normalized);
 };
 const getFlagValue = (args, names) => {

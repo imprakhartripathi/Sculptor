@@ -590,7 +590,7 @@ export const syncPackageRegistry = (rootDir: string): PackageRegistryArtifact =>
   return registry;
 };
 
-type PackageIndexStyle = "decorator" | "functional";
+type PackageIndexStyle = "decorator" | "functional" | "hybrid";
 
 const derivePackageIndexView = (
   record: PackageRecord,
@@ -602,6 +602,8 @@ const derivePackageIndexView = (
 } => {
   const ownedFiles = record.files.filter((file) => file.path !== record.index && file.registered);
   const controllerFiles = style === "decorator" ? ownedFiles.filter((file) => file.path.endsWith(".controller.ts")) : [];
+  const hybridControllerFiles =
+    style === "hybrid" ? ownedFiles.filter((file) => file.path.endsWith(".controller.ts")) : [];
   const serviceFiles = ownedFiles.filter((file) => file.path.endsWith(".service.ts"));
   const repositoryFiles = ownedFiles.filter((file) => file.path.endsWith(".repository.ts"));
   const middlewareFiles = ownedFiles.filter((file) => file.path.endsWith(".middleware.ts"));
@@ -612,6 +614,8 @@ const derivePackageIndexView = (
   const importableFiles =
       style === "functional"
       ? [...serviceFiles, ...repositoryFiles, ...routeFiles, ...routeHandlerFiles]
+      : style === "hybrid"
+      ? [...hybridControllerFiles, ...serviceFiles, ...repositoryFiles, ...middlewareFiles, ...routeFiles, ...routeHandlerFiles, ...dtoFiles]
       : [
           ...controllerFiles,
           ...serviceFiles,
@@ -623,6 +627,16 @@ const derivePackageIndexView = (
   const exportFiles =
       style === "functional"
       ? [...serviceFiles, ...repositoryFiles, ...routeFiles, ...routeHandlerFiles, ...typeFiles]
+      : style === "hybrid"
+      ? [
+          ...hybridControllerFiles,
+          ...serviceFiles,
+          ...repositoryFiles,
+          ...middlewareFiles,
+          ...routeFiles,
+          ...routeHandlerFiles,
+          ...dtoFiles
+        ]
       : [
           ...controllerFiles,
           ...serviceFiles,
@@ -676,6 +690,24 @@ const derivePackageIndexView = (
 };
 
 export const ${toPascalCase(record.name)}Package: SculptorFunctionalPackage = Package(${toPascalCase(record.name)}PackageDefinition)(() => ${toPascalCase(record.name)}PackageDefinition);`
+    : style === "hybrid"
+    ? `@Package({
+  name: "${record.name}",
+  path: "${record.path}",
+  imports: [],
+  exports: ${renderArray([...serviceFiles, ...repositoryFiles, ...dtoFiles].map((file) => inferSymbolFromFile(file.path)))},
+  controllers: ${renderArray(hybridControllerFiles.map((file) => inferSymbolFromFile(file.path)))},
+  handlers: ${renderArray(routeHandlerFiles.map((file) => inferSymbolFromFile(file.path)))},
+  services: ${renderArray(serviceFiles.map((file) => inferSymbolFromFile(file.path)))},
+  repositories: ${renderArray(repositoryFiles.map((file) => inferSymbolFromFile(file.path)))},
+  middlewares: ${renderArray(middlewareFiles.map((file) => inferSymbolFromFile(file.path)))},
+  routes: ${renderArray(routeFiles.map((file) => inferSymbolFromFile(file.path)))},
+  customLinkedHelper: {
+    class: [],
+    function: []
+  }
+})
+export class ${toPascalCase(record.name)}Package {}`
     : `@Package({
   name: "${record.name}",
   path: "${record.path}",
@@ -1000,7 +1032,14 @@ const inferPackageIndexStyle = (record: PackageRecord, sourceText?: string): Pac
     return "functional";
   }
 
-  if (record.files.some((file) => file.path.endsWith(".controller.ts"))) {
+  const hasControllers = record.files.some((file) => file.path.endsWith(".controller.ts"));
+  const hasRoutes = record.files.some((file) => file.path.endsWith(".route.ts") || file.path.endsWith(".route.handler.ts"));
+
+  if (hasControllers && hasRoutes) {
+    return "hybrid";
+  }
+
+  if (hasControllers) {
     return "decorator";
   }
 

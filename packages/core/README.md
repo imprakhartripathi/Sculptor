@@ -4,9 +4,9 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 
 ## Version Policy
 
-- Pre-release line: `v0.3.x`
-- Current package version: `0.3.6`
-- This pre-release line keeps the request context, package flattening, and explicit DI re-exports aligned with the package-aware runtime contract.
+- Pre-release line: `v0.3.10`
+- Current package version: `0.3.10`
+- This pre-release line keeps request context, package flattening, functional package metadata, and explicit DI re-exports aligned with the package-aware runtime contract.
 - Expect minor changes and fixes until `v1.0.0`.
 
 ## What This Package Does
@@ -18,7 +18,7 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 - Exposes the shared registry shape used by scaffolded apps
 - Exposes `bootstrapApp({ listen: false })` for validation and CI flows
 - Exposes request context and framework error hook support
-- Re-exports the package metadata and explicit DI decorators from `@sculptor/di`
+- Re-exports the package metadata, explicit DI decorators, and functional package types from `@sculptor/di`
 
 ## Public API
 
@@ -59,6 +59,8 @@ The current registry shape supports both the legacy flat arrays and the package-
 - `repositories`
 - `middlewares`
 - `routes`
+
+Package metadata can describe class-based or functional package outputs, and helper-linked file metadata stays outside the runtime DI container.
 
 ### Re-exports
 

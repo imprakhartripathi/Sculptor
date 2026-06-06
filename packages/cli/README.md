@@ -14,12 +14,14 @@ It handles:
 - app dependency recovery with `sc install deps`
 - global CLI refresh with `sc update`
 - scaffolded `.gitignore` generation
+- exact file register/unregister/remove flows with clean prompts
+- package registry commands for both package indexes and individual files
 
 ## Version Policy
 
-- Pre-release line: `v0.3.x`
-- Current package version: `0.3.6`
-- This pre-release line adds package-aware generation, `sc doctor`, `sc agents`, `sculptor.packages.json`, and package alias commands.
+- Pre-release line: `v0.3.10`
+- Current package version: `0.3.10`
+- This pre-release line adds package-aware generation, functional package scaffolds, `sc doctor`, `sc agents`, `sculptor.packages.json`, and exact package/file alias commands.
 - Expect minor changes and fixes until `v1.0.0`.
 
 ## Quick Command Sheet
@@ -51,6 +53,7 @@ It handles:
 | `sc g c user` | Generates a controller resource |
 | `sc g r user` | Generates a functional route and handler pair |
 | `sc g pkg user` | Generates a package index and package-local resources |
+| `sc g c user --functional` | Generates paired functional route and handler output |
 | `sc g c user in src/app/users` | Generates into a custom path |
 | `sc g c in src/app/users` | Infers the name from the path and generates there |
 | `sc g t user -e` | Generates an enum type file |
@@ -176,6 +179,7 @@ Behavior:
 
 - supports `-p`, `--p`, `-pkg`, `--pkg`, `-package`, and `--package`
 - package targeting is exact and does not singularize or pluralize names
+- package records track `registered` state and `tags` such as `helper`
 - warnings do not block the build path unless metadata is malformed or irrecoverable
 
 ### `sc ls` / `sc list`
@@ -202,12 +206,16 @@ What they do:
 What they do:
 
 - register a file in `sculptor.packages.json`
+- resolve exact file paths before prompting
+- support package registration with `sc reg pkg <name>`
 
 ### `sc ureg` / `sc unreg` / `sc unregister` / `sc ur`
 
 What they do:
 
 - unregister a file from `sculptor.packages.json`
+- resolve exact file paths before prompting
+- support exact file-path matching only
 
 ### `sc rm` / `sc remove`
 
@@ -215,6 +223,9 @@ What they do:
 
 - delete a file
 - sync the registry after removal
+- support `sc rm pkg <name>` for package removal
+- refuse to delete package index files directly
+- prompt before deleting the resolved file
 
 ### `sc config`
 

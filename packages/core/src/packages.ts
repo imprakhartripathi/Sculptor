@@ -12,10 +12,15 @@ export interface FlattenedRegistry {
   packageMiddlewares: ProviderToken[];
   middlewares: RequestHandler[];
   routes: RouterSource[];
-  exports: ProviderToken[];
+  exports: PackageToken[];
 }
 
 const dedupe = <T>(values: T[]): T[] => [...new Set(values)];
+
+const isProviderToken = (token: PackageToken): token is ProviderToken =>
+  typeof token === "function" && typeof (token as { prototype?: unknown }).prototype === "object";
+
+const isConstructableToken = (token: PackageToken): token is ProviderToken => isProviderToken(token);
 
 const normalizeRegistry = (registry: RegistryShape): Required<RegistryShape> => ({
   packages: registry.packages ?? [],
@@ -39,13 +44,13 @@ export const flattenRegistry = (registry: RegistryShape): FlattenedRegistry => {
   const packageMiddlewares: ProviderToken[] = [];
   const middlewares = [...normalized.middlewares];
   const routes = [...normalized.routes];
-  const exportsList: ProviderToken[] = [];
+  const exportsList: PackageToken[] = [];
 
   for (const node of packageGraph.ordered) {
     const definition = node.definition;
     controllers.push(...(definition.controllers ?? []));
-    services.push(...(definition.services ?? []));
-    repositories.push(...(definition.repositories ?? []));
+    services.push(...(definition.services ?? []).filter(isProviderToken));
+    repositories.push(...(definition.repositories ?? []).filter(isProviderToken));
     packageMiddlewares.push(...(definition.middlewares ?? []));
     routes.push(...(definition.routes ?? []));
     exportsList.push(...(definition.exports ?? []));
@@ -54,7 +59,7 @@ export const flattenRegistry = (registry: RegistryShape): FlattenedRegistry => {
   return {
     packages: normalized.packages,
     controllers: dedupe(controllers),
-    services: dedupe([...services, ...exportsList]),
+    services: dedupe(services),
     repositories: dedupe(repositories),
     middlewares: dedupe(middlewares),
     packageMiddlewares: dedupe(packageMiddlewares),
@@ -70,7 +75,7 @@ export const createRuntimeContainer = (registry: RegistryShape): Container => {
     ...flattened.services.map((token) => ({ token, kind: "service" as const })),
     ...flattened.repositories.map((token) => ({ token, kind: "repository" as const })),
     ...flattened.packageMiddlewares.map((token) => ({ token, kind: "middleware" as const })),
-    ...flattened.exports.map((token) => ({ token, kind: "export" as const }))
+    ...flattened.exports.filter(isConstructableToken).map((token) => ({ token, kind: "export" as const }))
   ]);
 };
 

@@ -4,9 +4,9 @@ The SculptorTS template-registry package hosts scaffold and generator templates 
 
 ## Version Notes
 
-- Pre-release line: `v0.3.x`
-- Current package version: `0.3.6`
-- This pre-release line keeps the template registry focused on scaffold and generator content while the CLI owns orchestration, package registry updates, and `AGENTS.md` generation.
+- Pre-release line: `v0.3.10`
+- Current package version: `0.3.10`
+- This pre-release line keeps the template registry focused on scaffold and generator content while the CLI owns orchestration, package registry updates, `AGENTS.md` generation, and exact file command flows.
 - Expect minor template adjustments and fixes until `v1.0.0`.
 
 ## What This Package Does
@@ -18,6 +18,8 @@ The SculptorTS template-registry package hosts scaffold and generator templates 
 - Organizes templates under `src/registry/templates/` with a thin export-only `src/index.ts`
 - Includes package scaffold templates for package-aware generation
 - Supports marker-block based regeneration for package indexes and other generated files
+- Emits class, functional, and hybrid scaffolds depending on the selected mode
+- Generates helper-linked metadata blocks without guessing user-authored helper names
 
 ## Public API
 
@@ -33,7 +35,7 @@ The CLI consumes this package through the same generator helpers it used before:
 When the CLI loads these helpers at runtime, it now does so lazily so global installs can recover if this package is missing.
 
 Route generation now emits paired `*.route.ts` and `*.route.handler.ts` files by default.
-Controller generation stays controller-first by default and can opt into paired functional files when requested.
+Controller generation stays class-first by default and can opt into paired functional files when requested.
 Scaffolded apps now also receive a standard `.gitignore` with common Node and TypeScript ignores.
 
 ## Why It Exists
