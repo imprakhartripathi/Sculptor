@@ -2,9 +2,13 @@
 
 This changelog documents the current Sculptor release line and the historical ranges that remain relevant for compatibility and support conversations.
 
-## v1.0.1
+All versions before `v1.0.0` are deprecated. Only the current `v1.0.2` release line is supported for active development and fixes.
 
-The `v1.0.1` release line is the current package-aware Sculptor architecture.
+Versions before `v1.0.0` are no longer actively maintained and will not receive future updates.
+
+## v1.0.2
+
+The `v1.0.2` release line is the current package-aware Sculptor architecture.
 
 Highlights:
 
@@ -36,7 +40,7 @@ Current stable package family:
 - `@sculptor/paws`
 - `@sculptor/cli`
 - `@sculptor/template-registry`
-- `@sculptor/di` is now part of the stable `1.0.1` release line
+- `@sculptor/di` is now part of the stable `1.0.2` release line
 
 ## Legacy Compatibility Notes
 

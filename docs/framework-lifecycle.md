@@ -1,6 +1,6 @@
 # Framework Lifecycle
 
-This document describes the runtime lifecycle used by SculptorTS apps in the current `v1.0.1` release line.
+This document describes the runtime lifecycle used by SculptorTS apps in the current `v1.0.2` release line.
 
 ## Application Startup
 

@@ -1,13 +1,13 @@
 # @sculptor/router
 
-![SculptorTS](https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-nobg.png)
+<img src="https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-full-bg.png" alt="SculptorTS"/>
 
 The SculptorTS router package provides decorators and router assembly for controller-based and hybrid app styles.
 
 ## Version Policy
 
-- Release line: `v1.0.1`
-- Current package version: `1.0.1`
+- Release line: `v1.0.2`
+- Current package version: `1.0.2`
 - The router package keeps the controller, hybrid, and functional routing contract stable in the package-aware runtime line.
 - Future changes should stay additive and backwards-conscious.
 

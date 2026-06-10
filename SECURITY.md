@@ -4,15 +4,18 @@
 
 SculptorTS is actively maintained. Security fixes are expected on the current release line documented in `readme.md` and `CHANGELOG.md`.
 
+All versions before `v1.0.0` are deprecated and unsupported.
+Versions before `v1.0.0` are no longer actively maintained and will not receive future updates.
+
 Current stable support line:
 
-- `@sculptor/core` `v1.0.1`
-- `@sculptor/router` `v1.0.1`
-- `@sculptor/config` `v1.0.1`
-- `@sculptor/paws` `v1.0.1`
-- `@sculptor/cli` `v1.0.1`
-- `@sculptor/template-registry` `v1.0.1`
-- `@sculptor/di` `v1.0.1`
+- `@sculptor/core` `v1.0.2`
+- `@sculptor/router` `v1.0.2`
+- `@sculptor/config` `v1.0.2`
+- `@sculptor/paws` `v1.0.2`
+- `@sculptor/cli` `v1.0.2`
+- `@sculptor/template-registry` `v1.0.2`
+- `@sculptor/di` `v1.0.2`
 
 ## Reporting a Vulnerability
 

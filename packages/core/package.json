@@ -1,6 +1,6 @@
 {
   "name": "@sculptor/core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,10 +25,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@sculptor/config": "^1.0.1",
-    "@sculptor/di": "^1.0.1",
-    "@sculptor/paws": "^1.0.1",
-    "@sculptor/router": "^1.0.1",
+    "@sculptor/config": "^1.0.2",
+    "@sculptor/di": "^1.0.2",
+    "@sculptor/paws": "^1.0.2",
+    "@sculptor/router": "^1.0.2",
     "express": "^4.21.2",
     "reflect-metadata": "^0.2.2"
   }

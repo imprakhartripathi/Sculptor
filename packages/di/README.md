@@ -1,13 +1,13 @@
 # @sculptor/di
 
-![SculptorTS](https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-nobg.png)
+<img src="https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-full-bg.png" alt="SculptorTS"/>
 
 The SculptorTS DI package provides explicit, decorator-driven dependency injection and package metadata.
 
 ## Release Line
 
-- Current package version: `1.0.1`
-- This package is part of the `v1.0.1` package-aware architecture line.
+- Current package version: `1.0.2`
+- This package is part of the `v1.0.2` package-aware architecture line.
 
 ## What This Package Does
 
