@@ -1,6 +1,6 @@
 {
   "name": "@sculptor/paws",
-  "version": "0.3.11",
+  "version": "1.0.1",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,6 +25,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@sculptor/config": "^0.3.11"
+    "@sculptor/config": "^1.0.1"
   }
 }

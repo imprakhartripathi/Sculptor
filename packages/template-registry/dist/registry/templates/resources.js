@@ -235,7 +235,7 @@ export const createPackageResource = (name, outputDir, mode, options) => {
     const typesName = `${name}.types.ts`;
     const routeName = options?.routeName ?? name;
     const includeRouteArtifacts = options?.includeRouteArtifacts ?? mode !== "decorator";
-    const routePrefix = options?.routePrefix ?? `${toRoutePath(routeName)}/route`;
+    const routePrefix = options?.routePrefix ?? (mode === "hybrid" ? `r/${routeName}` : `${toRoutePath(routeName)}/route`);
     const routeNameFile = `${routeName}.route.ts`;
     const routeHandlerName = `${routeName}.route.handler.ts`;
     const controllerSymbol = `${toPascalCase(name)}Controller`;
@@ -309,6 +309,8 @@ export const ${repositorySymbol}: SculptorFunctionalRepository<{ resource: strin
 
 import { ${routeErrorHandlerSymbol}, ${routeHandlerSymbol} } from "./${routeHandlerName.replace(/\.ts$/, ".js")}";
 
+// In hybrid packages, the /r prefix keeps this generated route separate from the controller route.
+// You can change it later if your app wants a different layout.
 export const ${routeSymbol} = FunctionalRouter("/${routePrefix}");
 
 ${routeSymbol}.get(${routeHandlerSymbol});

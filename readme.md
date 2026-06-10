@@ -1,8 +1,10 @@
 # SculptorTS
 
+![SculptorTS](https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-full-bg.png)
+
 SculptorTS is a TypeScript-first, Express-based framework for building APIs with decorator controllers, functional routers, or both together.
 
-The `v0.3.x` pre-release line introduces a package-aware architecture that is:
+The `v1.0.1` release line introduces a package-aware architecture that is:
 
 - explicit
 - registry-aware
@@ -25,15 +27,15 @@ If you are new to the framework, read this file first, then move into the packag
 
 ## Release Notes
 
-Current pre-release line: `v0.3.x`
+Current release line: `v1.0.1`
 
-- `@sculptor/core` `0.3.11`
-- `@sculptor/router` `0.3.11`
-- `@sculptor/config` `0.3.11`
-- `@sculptor/paws` `0.3.11`
-- `@sculptor/template-registry` `0.3.11`
-- `@sculptor/cli` `0.3.12`
-- `@sculptor/di` `0.1.8`
+- `@sculptor/core` `1.0.1`
+- `@sculptor/router` `1.0.1`
+- `@sculptor/config` `1.0.1`
+- `@sculptor/paws` `1.0.1`
+- `@sculptor/template-registry` `1.0.1`
+- `@sculptor/cli` `1.0.1`
+- `@sculptor/di` `1.0.1`
 
 This line adds:
 
@@ -52,7 +54,7 @@ This line adds:
 - clean CLI errors without raw stack traces
 - `req.ctx` as the default request context on Sculptor-bootstrapped apps
 
-This is a pre-release path to `v1.0.0`. The final stable line will be `1.x`, and expect minor changes and fixes until then.
+This is the stable `v1.0.1` line. Future changes should stay additive and backwards-conscious.
 
 Historical package ranges remain documented in [CHANGELOG.md](CHANGELOG.md).
 
@@ -79,7 +81,7 @@ If you want the full runtime story, read these in order:
 
 ## Hidden Behavior Worth Knowing
 
-- Hybrid package scaffolds intentionally generate the functional route under `"/route"` to avoid route collisions with the package controller.
+- Hybrid package scaffolds intentionally generate the functional route under `"/r/<package>"` to avoid route collisions with the package controller.
 - The runtime converts thrown values into JSON error responses instead of leaving Express to render HTML error pages.
 - `req.ctx` is attached by the framework bootstrap before routes run.
 - Functional, class-based, and middleware errors all follow the same framework error pipeline.

@@ -1,13 +1,15 @@
 # @sculptor/router
 
+![SculptorTS](https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-nobg.png)
+
 The SculptorTS router package provides decorators and router assembly for controller-based and hybrid app styles.
 
 ## Version Policy
 
-- Pre-release line: `v0.3.x`
-- Current package version: `0.3.11`
+- Release line: `v1.0.1`
+- Current package version: `1.0.1`
 - The router package keeps the controller, hybrid, and functional routing contract stable in the package-aware runtime line.
-- Expect minor changes and fixes until `v1.0.0`.
+- Future changes should stay additive and backwards-conscious.
 
 ## What This Package Does
 
@@ -78,7 +80,7 @@ const users = FunctionalRouter("/users");
 - `users.use(errorHandler)` can mount an Express error handler for the scope
 - the returned scope type is `FunctionalRouterScope`
 
-Hybrid package scaffolds intentionally generate a functional route under `"/route"` so the generated route does not collide with the package controller route. That convention is deliberate and preserved by the package generator.
+Hybrid package scaffolds intentionally generate a functional route under `"/r/<package>"` so the generated route does not collide with the package controller route. That convention is deliberate and preserved by the package generator, and the prefix can be changed by the user if needed.
 
 ## Router Assembly
 
@@ -130,7 +132,7 @@ If you do not pass a prefix, the router is returned unwrapped.
 | Pass no controllers and no routes | An empty router is returned |
 | Pass both controllers and routes | Both styles are mounted into one router |
 | Register the same method and path twice | Bootstrap fails with a typed route-collision error |
-| Generate a hybrid package scaffold | The functional route is generated under `/route` to avoid collisions with the controller |
+| Generate a hybrid package scaffold | The functional route is generated under `/r/<package>` to avoid collisions with the controller |
 
 ## Example
 

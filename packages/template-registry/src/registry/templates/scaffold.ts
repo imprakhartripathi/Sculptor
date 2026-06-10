@@ -567,7 +567,9 @@ export const healthRouteTemplate = `import { FunctionalRouter } from "@sculptor/
 
 import { healthErrorHandler, healthHandler } from "./health.route.handler.js";
 
-export const health = FunctionalRouter("/health/route");
+// In hybrid packages, the /r prefix keeps this generated route separate from the controller route.
+// You can change it later if your app wants a different layout.
+export const health = FunctionalRouter("/r/health");
 
 health.get(healthHandler);
 health.at("/ping").get(healthHandler);
@@ -591,7 +593,7 @@ describe("HealthController", () => {
 });
 `;
 
-export const healthRouteSpecTemplate = `import express from "express";
+export const healthRouteSpecTemplate = (mode: ScaffoldMode): string => `import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
@@ -602,8 +604,14 @@ describe("health", () => {
     const app = express();
     app.use(health.toRouter());
 
-    await request(app).get("/health").expect(200).expect({ status: "ok" });
-    await request(app).get("/health/ping").expect(200).expect({ message: "pong" });
+    await request(app)
+      .get("${mode === "hybrid" ? "/r/health" : "/health"}")
+      .expect(200)
+      .expect({ status: "ok" });
+    await request(app)
+      .get("${mode === "hybrid" ? "/r/health/ping" : "/health/ping"}")
+      .expect(200)
+      .expect({ message: "pong" });
   });
 });
 `;

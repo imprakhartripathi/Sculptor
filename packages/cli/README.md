@@ -1,5 +1,7 @@
 # @sculptor/cli
 
+![SculptorTS](https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-nobg.png)
+
 The SculptorTS CLI is the user-facing command line for the framework.
 
 It handles:
@@ -19,10 +21,10 @@ It handles:
 
 ## Version Policy
 
-- Pre-release line: `v0.3.x`
-- Current package version: `0.3.12`
-- This pre-release line adds package-aware generation, functional package scaffolds, `sc doctor`, `sc agents`, `sculptor.packages.json`, and exact package/file alias commands.
-- Expect minor changes and fixes until `v1.0.0`.
+- Release line: `v1.0.1`
+- Current package version: `1.0.1`
+- This release line keeps package-aware generation, functional package scaffolds, `sc doctor`, `sc agents`, `sculptor.packages.json`, and exact package/file alias commands.
+- Future changes should stay additive and backwards-conscious.
 
 ## Quick Command Sheet
 

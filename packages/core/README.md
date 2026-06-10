@@ -1,13 +1,15 @@
 # @sculptor/core
 
+![SculptorTS](https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-nobg.png)
+
 The SculptorTS core package boots the HTTP server and exposes the primary framework runtime API.
 
 ## Version Policy
 
-- Pre-release line: `v0.3.x`
-- Current package version: `0.3.11`
-- This pre-release line keeps request context, package flattening, functional package metadata, and explicit DI re-exports aligned with the package-aware runtime contract.
-- Expect minor changes and fixes until `v1.0.0`.
+- Release line: `v1.0.1`
+- Current package version: `1.0.1`
+- This release line keeps request context, package flattening, functional package metadata, and explicit DI re-exports aligned with the package-aware runtime contract.
+- Future changes should stay additive and backwards-conscious.
 
 ## What This Package Does
 

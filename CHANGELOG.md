@@ -2,9 +2,9 @@
 
 This changelog documents the current Sculptor release line and the historical ranges that remain relevant for compatibility and support conversations.
 
-## v0.3.10 Pre-Release
+## v1.0.1
 
-The `v0.3.10` pre-release line is the current package-aware Sculptor architecture.
+The `v1.0.1` release line is the current package-aware Sculptor architecture.
 
 Highlights:
 
@@ -26,9 +26,9 @@ Highlights:
 - CLI errors are surfaced cleanly without raw stack traces
 - hybrid apps continue to support decorator, functional, and mixed composition
 
-This is still the pre-release phase, so changes may continue to land as the package contracts settle on the way to `v1.0.0`.
+This is the stable release line, so future changes should stay additive and backwards-conscious.
 
-Current pre-release package family:
+Current stable package family:
 
 - `@sculptor/core`
 - `@sculptor/router`
@@ -36,7 +36,7 @@ Current pre-release package family:
 - `@sculptor/paws`
 - `@sculptor/cli`
 - `@sculptor/template-registry`
-- `@sculptor/di` begins at `0.1.7`
+- `@sculptor/di` is now part of the stable `1.0.1` release line
 
 ## Legacy Compatibility Notes
 

@@ -4,15 +4,15 @@
 
 SculptorTS is actively maintained. Security fixes are expected on the current release line documented in `readme.md` and `CHANGELOG.md`.
 
-Current pre-release support line:
+Current stable support line:
 
-- `@sculptor/core` `v0.3.10`
-- `@sculptor/router` `v0.3.10`
-- `@sculptor/config` `v0.3.10`
-- `@sculptor/paws` `v0.3.10`
-- `@sculptor/cli` `v0.3.10`
-- `@sculptor/template-registry` `v0.3.10`
-- `@sculptor/di` `0.1.7`
+- `@sculptor/core` `v1.0.1`
+- `@sculptor/router` `v1.0.1`
+- `@sculptor/config` `v1.0.1`
+- `@sculptor/paws` `v1.0.1`
+- `@sculptor/cli` `v1.0.1`
+- `@sculptor/template-registry` `v1.0.1`
+- `@sculptor/di` `v1.0.1`
 
 ## Reporting a Vulnerability
 

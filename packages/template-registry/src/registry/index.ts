@@ -171,7 +171,7 @@ export const scaffoldProject = (
     }
 
     if (metadata.mode === "functional" || metadata.mode === "hybrid") {
-      rootFiles["src/tests/health.route.spec.ts"] = healthRouteSpecTemplate;
+      rootFiles["src/tests/health.route.spec.ts"] = healthRouteSpecTemplate(metadata.mode);
     }
   }
 

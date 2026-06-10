@@ -66,14 +66,14 @@ Hybrid mode is still explicit. It simply lets class-based and functional composi
 
 ## Hybrid Route Convention
 
-Hybrid package scaffolds intentionally generate a functional route at `"/route"` relative to the package prefix.
+Hybrid package scaffolds intentionally generate a functional route at `"/r/<package>"` relative to the package prefix.
 
 That convention prevents the generated functional route from colliding with the package controller's default `"/"` route.
 
 Example:
 
 - controller route: `GET /users`
-- functional route: `GET /users/route`
+- functional route: `GET /r/users`
 
 This is deliberate and documented so the generated package stays collision-safe.
 

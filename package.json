@@ -1,6 +1,6 @@
 {
   "name": "sculptor-workspace",
-  "version": "0.3.11",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "workspaces": [

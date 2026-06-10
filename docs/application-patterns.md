@@ -67,7 +67,7 @@ Tradeoffs:
 
 - maximum flexibility
 - slightly more convention to learn
-- route collision awareness becomes important, which is why generated hybrid packages keep their functional route under `"/route"`
+- route collision awareness becomes important, which is why generated hybrid packages keep their functional route under `"/r/<package>"`
 
 ## Choosing a Style
 

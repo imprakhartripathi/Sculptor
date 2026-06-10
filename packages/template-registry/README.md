@@ -1,13 +1,15 @@
 # @sculptor/template-registry
 
+![SculptorTS](https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-nobg.png)
+
 The SculptorTS template-registry package hosts scaffold and generator templates outside the CLI.
 
 ## Version Notes
 
-- Pre-release line: `v0.3.x`
-- Current package version: `0.3.11`
-- This pre-release line keeps the template registry focused on scaffold and generator content while the CLI owns orchestration, package registry updates, `AGENTS.md` generation, and exact file command flows.
-- Expect minor template adjustments and fixes until `v1.0.0`.
+- Release line: `v1.0.1`
+- Current package version: `1.0.1`
+- This release line keeps the template registry focused on scaffold and generator content while the CLI owns orchestration, package registry updates, `AGENTS.md` generation, and exact file command flows.
+- Future template changes should stay additive and backwards-conscious.
 
 ## What This Package Does
 

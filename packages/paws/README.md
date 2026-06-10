@@ -1,14 +1,16 @@
 # @sculptor/paws
 
+![SculptorTS](https://raw.githubusercontent.com/imprakhartripathi/Sculptor/main/assets/sculptor-nobg.png)
+
 Lightweight SculptorTS logger with a standard mode and a more expressive dog mode.
 
 ## Version Notes
 
-This package is on the `v0.3.x` pre-release line. No deprecated range is called out here.
+This package is on the `v1.0.1` release line. No deprecated range is called out here.
 
-Current package version: `0.3.11`
+Current package version: `1.0.1`
 
-Expect minor changes and fixes until `v1.0.0`.
+Future changes should stay additive and backwards-conscious.
 
 ## Config
 

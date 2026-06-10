@@ -77,7 +77,7 @@ export const scaffoldProject = (metadata, targetDir) => {
             rootFiles["src/tests/health.controller.spec.ts"] = healthControllerSpecTemplate;
         }
         if (metadata.mode === "functional" || metadata.mode === "hybrid") {
-            rootFiles["src/tests/health.route.spec.ts"] = healthRouteSpecTemplate;
+            rootFiles["src/tests/health.route.spec.ts"] = healthRouteSpecTemplate(metadata.mode);
         }
     }
     for (const [relativePath, content] of Object.entries(rootFiles)) {
