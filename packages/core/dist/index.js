@@ -8,5 +8,5 @@ export { createRequestContext, ensureRequestContext, requestContextMiddleware } 
 export { flattenRegistry, createRuntimeContainer, validateRuntimePackages } from "./packages.js";
 export { bootstrapApp, startApp } from "./runtime.js";
 export { registry } from "./registry.js";
-export { HttpError, RuntimeError, SculptorError, normalizeError, createFrameworkErrorMiddleware } from "./errors.js";
+export { HttpError, RuntimeError, SculptorError, normalizeError, toFrameworkErrorResponse, createFrameworkErrorMiddleware } from "./errors.js";
 //# sourceMappingURL=index.js.map

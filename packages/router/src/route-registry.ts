@@ -1,5 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 
+import { wrapRequestHandler } from "./async.js";
 import type { ControllerMetadata, RouteDefinition } from "./types.js";
 
 type RouteHandler = (...args: unknown[]) => unknown;
@@ -80,7 +81,7 @@ export const registerControllerRoutes = (
     const middlewares: RequestHandler[] = [
       ...controllerMetadata.middlewares,
       ...route.middlewares
-    ];
+    ].map((middleware) => wrapRequestHandler(middleware));
 
     registrar.call(
       app,

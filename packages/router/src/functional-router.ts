@@ -2,6 +2,7 @@ import express from "express";
 import type { ErrorRequestHandler, RequestHandler } from "express";
 
 import { registerRouterSource } from "./collisions.js";
+import { wrapErrorHandler, wrapRequestHandler } from "./async.js";
 import type {
   FunctionalHandler,
   FunctionalRouterScope,
@@ -33,6 +34,11 @@ const joinPaths = (prefix: string, path: string): string => {
 
   return `${normalizedPrefix}${normalizedPath}`;
 };
+
+const wrapMiddleware = (middleware: RequestHandler | FunctionalHandler | RouterErrorHandler): RequestHandler | ErrorRequestHandler =>
+  middleware.length >= 4
+    ? wrapErrorHandler(middleware as unknown as ErrorRequestHandler)
+    : wrapRequestHandler(middleware as RequestHandler);
 
 const createRouteHandler = (
   method: string,
@@ -93,13 +99,14 @@ class FunctionalRouterImpl implements FunctionalRouterScope {
 
     const routePath = joinPaths(this.prefix, localPath);
     const routeHandler = createRouteHandler(method, routePath, lastHandler as FunctionalHandler);
-    const middlewareList = middlewares.reverse().filter(
-      (value): value is RequestHandler => typeof value === "function"
-    );
+    const middlewareList = middlewares
+      .reverse()
+      .filter((value): value is RequestHandler | FunctionalHandler => typeof value === "function")
+      .map((middleware) => wrapMiddleware(middleware));
 
     (this.router[method] as (path: string, ...handlers: RequestHandler[]) => unknown)(
       routePath,
-      ...middlewareList,
+      ...(middlewareList as RequestHandler[]),
       routeHandler
     );
 
@@ -119,15 +126,19 @@ class FunctionalRouterImpl implements FunctionalRouterScope {
   ): FunctionalRouterScope {
     if (typeof pathOrMiddleware !== "string") {
       this.router.use(
-        pathOrMiddleware as ErrorRequestHandler,
-        ...(middlewares as Array<RequestHandler | ErrorRequestHandler>)
+        wrapMiddleware(pathOrMiddleware as RequestHandler | RouterErrorHandler),
+        ...(middlewares as Array<RequestHandler | RouterErrorHandler>).map((middleware) =>
+          wrapMiddleware(middleware)
+        ) as Array<RequestHandler | ErrorRequestHandler>
       );
       return this;
     }
 
     this.router.use(
       joinPaths(this.prefix, pathOrMiddleware),
-      ...(middlewares as Array<RequestHandler | ErrorRequestHandler>)
+      ...(middlewares as Array<RequestHandler | RouterErrorHandler>).map((middleware) => wrapMiddleware(middleware)) as Array<
+        RequestHandler | ErrorRequestHandler
+      >
     );
     return this;
   }

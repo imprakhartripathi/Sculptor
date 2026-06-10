@@ -1,5 +1,6 @@
 import express from "express";
 import type { Server } from "node:http";
+import type { RequestHandler } from "express";
 
 import { loadConfig } from "@sculptor/config";
 import { createRuntimeContainer, flattenRegistry, validateRuntimePackages } from "./packages.js";
@@ -7,7 +8,7 @@ import { paws } from "@sculptor/paws";
 import { createRouter } from "@sculptor/router";
 
 import { requestContextMiddleware } from "./context.js";
-import { createFrameworkErrorMiddleware } from "./errors.js";
+import { createFrameworkErrorMiddleware, RuntimeError } from "./errors.js";
 import type {
   BootstrapAppOptions,
   BootstrapAppResult,
@@ -30,6 +31,24 @@ const resolvePort = (port: number | undefined, envPort: string | undefined, fall
 
   const numericFallback = Number(fallback);
   return Number.isNaN(numericFallback) ? 3000 : numericFallback;
+};
+
+const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
+  (typeof value === "object" || typeof value === "function") &&
+  value !== null &&
+  "then" in value &&
+  typeof (value as { then?: unknown }).then === "function";
+
+const wrapRequestHandler = (handler: RequestHandler): RequestHandler => (req, res, next) => {
+  try {
+    const result = handler(req, res, next);
+
+    if (isPromiseLike(result)) {
+      void Promise.resolve(result).catch(next);
+    }
+  } catch (error) {
+    next(error);
+  }
 };
 
 const createApp = (): express.Express => {
@@ -76,15 +95,21 @@ const bootstrap = ({
   const dependencyIssues = container.validate();
 
   if (dependencyIssues.length > 0) {
-    throw new Error(
+    throw new RuntimeError(
       dependencyIssues
         .map((issue: { reason: string }) => issue.reason)
-        .join("\n")
+        .join("\n"),
+      {
+        code: "DEPENDENCY_VALIDATION_ERROR",
+        details: {
+          issues: dependencyIssues.map((issue) => issue.reason)
+        }
+      }
     );
   }
 
   for (const middleware of flattenedRegistry.middlewares) {
-    app.use(middleware);
+    app.use(wrapRequestHandler(middleware));
   }
 
   const router = createRouter({

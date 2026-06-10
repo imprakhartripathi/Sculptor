@@ -83,12 +83,15 @@ const readRouteContext = (res) => {
         propertyKey: route.propertyKey
     };
 };
-export const createFrameworkErrorMiddleware = (onError) => (error, req, res, next) => {
-    const normalized = normalizeError(error);
-    if (!onError) {
-        next(normalized);
-        return;
+export const toFrameworkErrorResponse = (error) => ({
+    error: {
+        code: error.code,
+        message: error.message,
+        status: error.status
     }
+});
+export const createFrameworkErrorMiddleware = (onError) => (error, req, res, _next) => {
+    const normalized = normalizeError(error);
     const context = {
         request: req,
         response: res,
@@ -102,21 +105,15 @@ export const createFrameworkErrorMiddleware = (onError) => (error, req, res, nex
             : undefined,
         context: req.ctx
     };
-    void Promise.resolve(onError(normalized, context))
+    void Promise.resolve(onError?.(normalized, context))
+        .catch(() => undefined)
         .then(() => {
         if (res.headersSent) {
             return;
         }
-        res.status(normalized.status >= 400 ? normalized.status : 500).json({
-            error: {
-                code: normalized.code,
-                message: normalized.message,
-                status: normalized.status
-            }
-        });
-    })
-        .catch((hookError) => {
-        next(normalizeError(hookError));
+        res
+            .status(normalized.status >= 400 ? normalized.status : 500)
+            .json(toFrameworkErrorResponse(normalized));
     });
 };
 //# sourceMappingURL=errors.js.map

@@ -19,8 +19,8 @@ It handles:
 
 ## Version Policy
 
-- Pre-release line: `v0.3.10`
-- Current package version: `0.3.10`
+- Pre-release line: `v0.3.x`
+- Current package version: `0.3.12`
 - This pre-release line adds package-aware generation, functional package scaffolds, `sc doctor`, `sc agents`, `sculptor.packages.json`, and exact package/file alias commands.
 - Expect minor changes and fixes until `v1.0.0`.
 
@@ -130,6 +130,7 @@ Behavior:
 - uses `nodemon` when `project.devServer` is `nodemon`
 - uses `tsx` when `project.devServer` is `tsx`
 - refuses to run outside a Sculptor app root
+- prints a clean one-line framework error instead of a raw stack trace when the command is not allowed in the current directory
 - suppresses the runtime banner by setting `SCULPTOR_SUPPRESS_BANNER=1`
 
 ### `sc start`
@@ -315,6 +316,8 @@ The CLI only allows certain commands outside a Sculptor app root:
 - `sc update`
 
 The runtime commands require `sculptor.json` in the current app root.
+
+When a command is rejected by the app-root guard, Sculptor prints a user-facing message only. It does not expose the internal stack trace in normal CLI output.
 
 Next:
 

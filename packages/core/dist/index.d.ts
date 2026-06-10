@@ -8,5 +8,5 @@ export { createRequestContext, ensureRequestContext, requestContextMiddleware } 
 export { flattenRegistry, createRuntimeContainer, validateRuntimePackages } from "./packages.js";
 export { bootstrapApp, startApp } from "./runtime.js";
 export { registry } from "./registry.js";
-export { HttpError, RuntimeError, SculptorError, normalizeError, createFrameworkErrorMiddleware } from "./errors.js";
+export { HttpError, RuntimeError, SculptorError, normalizeError, toFrameworkErrorResponse, createFrameworkErrorMiddleware } from "./errors.js";
 export type { BootstrapAppOptions, BootstrapAppResult, FrameworkErrorContext, FrameworkErrorHandler, FrameworkErrorHook, RegistryShape, SculptorFunctionalController, SculptorFunctionalHandler, SculptorFunctionalPackage, SculptorFunctionalRepository, SculptorFunctionalService, RequestContext, Req, Res, Nxt, Err, RouteRuntimeContext, StartAppBootstrapOptions, StartAppOptions } from "./types.js";

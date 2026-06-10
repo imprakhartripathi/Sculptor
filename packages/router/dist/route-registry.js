@@ -1,3 +1,4 @@
+import { wrapRequestHandler } from "./async.js";
 const normalizePathSegment = (segment) => {
     if (!segment) {
         return "/";
@@ -48,7 +49,7 @@ export const registerControllerRoutes = (app, controllerMetadata, controllerInst
         const middlewares = [
             ...controllerMetadata.middlewares,
             ...route.middlewares
-        ];
+        ].map((middleware) => wrapRequestHandler(middleware));
         registrar.call(app, fullPath, ...middlewares, createRouteHandler(controllerInstance, controllerMetadata, route));
     }
 };

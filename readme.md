@@ -2,7 +2,7 @@
 
 SculptorTS is a TypeScript-first, Express-based framework for building APIs with decorator controllers, functional routers, or both together.
 
-The `v0.3.10` pre-release line introduces a package-aware architecture that is:
+The `v0.3.x` pre-release line introduces a package-aware architecture that is:
 
 - explicit
 - registry-aware
@@ -25,15 +25,15 @@ If you are new to the framework, read this file first, then move into the packag
 
 ## Release Notes
 
-Current pre-release line: `v0.3.10`
+Current pre-release line: `v0.3.x`
 
-- `@sculptor/core`
-- `@sculptor/router`
-- `@sculptor/config`
-- `@sculptor/paws`
-- `@sculptor/cli`
-- `@sculptor/template-registry`
-- `@sculptor/di` starts on `0.1.7`
+- `@sculptor/core` `0.3.11`
+- `@sculptor/router` `0.3.11`
+- `@sculptor/config` `0.3.11`
+- `@sculptor/paws` `0.3.11`
+- `@sculptor/template-registry` `0.3.11`
+- `@sculptor/cli` `0.3.12`
+- `@sculptor/di` `0.1.8`
 
 This line adds:
 
@@ -56,6 +56,15 @@ This is a pre-release path to `v1.0.0`. The final stable line will be `1.x`, and
 
 Historical package ranges remain documented in [CHANGELOG.md](CHANGELOG.md).
 
+## Read Next
+
+If you want the full runtime story, read these in order:
+
+1. [docs/framework-lifecycle.md](docs/framework-lifecycle.md)
+2. [docs/error-handling.md](docs/error-handling.md)
+3. [docs/architecture.md](docs/architecture.md)
+4. [docs/application-patterns.md](docs/application-patterns.md)
+
 ## Documentation Map
 
 | Package | Purpose | Docs |
@@ -67,6 +76,13 @@ Historical package ranges remain documented in [CHANGELOG.md](CHANGELOG.md).
 | `@sculptor/config` | Framework and runtime config loading, `.env` interpolation, and redaction | [packages/config/README.md](packages/config/README.md) |
 | `@sculptor/template-registry` | Template metadata, registry-backed templates, and generator assets | [packages/template-registry/README.md](packages/template-registry/README.md) |
 | `@sculptor/paws` | Logger utility with standard and dog mode output | [packages/paws/README.md](packages/paws/README.md) |
+
+## Hidden Behavior Worth Knowing
+
+- Hybrid package scaffolds intentionally generate the functional route under `"/route"` to avoid route collisions with the package controller.
+- The runtime converts thrown values into JSON error responses instead of leaving Express to render HTML error pages.
+- `req.ctx` is attached by the framework bootstrap before routes run.
+- Functional, class-based, and middleware errors all follow the same framework error pipeline.
 
 ## Package-First Architecture
 

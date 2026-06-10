@@ -4,11 +4,13 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import express from "express";
+import type { RequestHandler } from "express";
+import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
 import { bootstrapApp, HttpError, normalizeError, SculptorError } from "../packages/core/src/index.js";
 import { ConfigInterpolationError, loadConfig, redactConfig } from "../packages/config/src/index.js";
-import { Controller, createRouter, Get } from "../packages/router/src/index.js";
+import { Controller, FunctionalRouter, createRouter, Get } from "../packages/router/src/index.js";
 import { RouteCollisionError } from "../packages/router/src/errors.js";
 import { runCli } from "../packages/cli/src/cli.js";
 import { loadPluginModule, PluginLoadError } from "../packages/cli/src/plugins.js";
@@ -143,6 +145,113 @@ describe("framework errors", () => {
     const error = new HttpError(404, "Not found");
 
     expect(normalizeError(error)).toBe(error);
+  });
+
+  it("returns framework JSON for controller failures", async () => {
+    const rootDir = tmpDir();
+
+    fs.writeFileSync(path.join(rootDir, "sculptor.json"), JSON.stringify({}, null, 2));
+
+    @Controller("/boom")
+    class BoomController {
+      @Get("/")
+      explode(): never {
+        throw new Error("controller boom");
+      }
+    }
+
+    const result = await bootstrapApp({
+      registry: {
+        controllers: [BoomController],
+        routes: [],
+        services: []
+      },
+      rootDir,
+      listen: false
+    });
+
+    const response = await request(result.app).get("/boom");
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      error: {
+        code: "Error",
+        message: "controller boom",
+        status: 500
+      }
+    });
+  });
+
+  it("returns framework JSON for functional handler failures", async () => {
+    const rootDir = tmpDir();
+
+    fs.writeFileSync(path.join(rootDir, "sculptor.json"), JSON.stringify({}, null, 2));
+
+    const boom = FunctionalRouter("/boom");
+    boom.get(() => {
+      throw new Error("functional boom");
+    });
+
+    const result = await bootstrapApp({
+      registry: {
+        controllers: [],
+        routes: [boom],
+        services: []
+      },
+      rootDir,
+      listen: false
+    });
+
+    const response = await request(result.app).get("/boom");
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      error: {
+        code: "Error",
+        message: "functional boom",
+        status: 500
+      }
+    });
+  });
+
+  it("returns framework JSON for async middleware failures", async () => {
+    const rootDir = tmpDir();
+
+    fs.writeFileSync(path.join(rootDir, "sculptor.json"), JSON.stringify({}, null, 2));
+
+    @Controller("/boom")
+    class BoomController {
+      @Get("/")
+      explode() {
+        return { ok: true };
+      }
+    }
+
+    const asyncMiddleware: RequestHandler = async () => {
+      throw new Error("middleware boom");
+    };
+
+    const result = await bootstrapApp({
+      registry: {
+        controllers: [BoomController],
+        routes: [],
+        services: [],
+        middlewares: [asyncMiddleware]
+      },
+      rootDir,
+      listen: false
+    });
+
+    const response = await request(result.app).get("/boom");
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      error: {
+        code: "Error",
+        message: "middleware boom",
+        status: 500
+      }
+    });
   });
 });
 

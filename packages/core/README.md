@@ -4,8 +4,8 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 
 ## Version Policy
 
-- Pre-release line: `v0.3.10`
-- Current package version: `0.3.10`
+- Pre-release line: `v0.3.x`
+- Current package version: `0.3.11`
 - This pre-release line keeps request context, package flattening, functional package metadata, and explicit DI re-exports aligned with the package-aware runtime contract.
 - Expect minor changes and fixes until `v1.0.0`.
 
@@ -17,7 +17,7 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 - Flattens package composition internally while keeping the package index as the package contract
 - Exposes the shared registry shape used by scaffolded apps
 - Exposes `bootstrapApp({ listen: false })` for validation and CI flows
-- Exposes request context and framework error hook support
+- Exposes request context and a unified framework error pipeline
 - Re-exports the package metadata, explicit DI decorators, and functional package types from `@sculptor/di`
 
 ## Public API
@@ -130,7 +130,7 @@ If the resolved port is `0`, the runtime reads the actual bound port from the se
 | Both controllers and routes | Combines both into one app router |
 | No routes | Starts a server, but nothing is mounted beyond Express body parsing |
 | `listen: false` | Bootstraps the app, validates the registry, and returns without binding a socket |
-| `onError` provided | Framework errors are routed through the lightweight hook before Express handling continues |
+| `onError` provided | Framework errors are routed through the lightweight hook before the JSON error response is sent |
 
 ## Request Context
 
@@ -155,7 +155,19 @@ The hook receives:
 - optional controller info
 - the request `context`
 
-This preserves Express compatibility while giving apps one central place to shape framework errors.
+The framework still sends a consistent JSON response after the hook runs:
+
+```json
+{
+  "error": {
+    "code": "RUNTIME_ERROR",
+    "message": "Something went wrong",
+    "status": 500
+  }
+}
+```
+
+This preserves Express compatibility while preventing HTML error pages from leaking out of framework-owned routes.
 
 ## Config Behavior
 

@@ -118,15 +118,24 @@ const readRouteContext = (res: Response): FrameworkErrorContext["route"] | undef
   };
 };
 
+export const toFrameworkErrorResponse = (error: SculptorError): {
+  error: {
+    code: string;
+    message: string;
+    status: number;
+  };
+} => ({
+  error: {
+    code: error.code,
+    message: error.message,
+    status: error.status
+  }
+});
+
 export const createFrameworkErrorMiddleware = (
   onError?: FrameworkErrorHook
-): ErrorRequestHandler => (error: unknown, req: Request, res: Response, next: NextFunction) => {
+): ErrorRequestHandler => (error: unknown, req: Request, res: Response, _next: NextFunction) => {
   const normalized = normalizeError(error);
-
-  if (!onError) {
-    next(normalized);
-    return;
-  }
 
   const context: FrameworkErrorContext = {
     request: req,
@@ -142,21 +151,15 @@ export const createFrameworkErrorMiddleware = (
     context: req.ctx
   };
 
-  void Promise.resolve(onError(normalized, context))
+  void Promise.resolve(onError?.(normalized, context))
+    .catch(() => undefined)
     .then(() => {
       if (res.headersSent) {
         return;
       }
 
-      res.status(normalized.status >= 400 ? normalized.status : 500).json({
-        error: {
-          code: normalized.code,
-          message: normalized.message,
-          status: normalized.status
-        }
-      });
-    })
-    .catch((hookError: unknown) => {
-      next(normalizeError(hookError));
+      res
+        .status(normalized.status >= 400 ? normalized.status : 500)
+        .json(toFrameworkErrorResponse(normalized));
     });
 };

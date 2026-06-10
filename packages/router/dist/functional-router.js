@@ -1,5 +1,6 @@
 import express from "express";
 import { registerRouterSource } from "./collisions.js";
+import { wrapErrorHandler, wrapRequestHandler } from "./async.js";
 const normalizePathSegment = (segment) => {
     if (!segment) {
         return "/";
@@ -18,6 +19,9 @@ const joinPaths = (prefix, path) => {
     }
     return `${normalizedPrefix}${normalizedPath}`;
 };
+const wrapMiddleware = (middleware) => middleware.length >= 4
+    ? wrapErrorHandler(middleware)
+    : wrapRequestHandler(middleware);
 const createRouteHandler = (method, routePath, handler) => {
     return (req, res, next) => {
         res.locals.sculptorRoute = {
@@ -54,16 +58,19 @@ class FunctionalRouterImpl {
         }
         const routePath = joinPaths(this.prefix, localPath);
         const routeHandler = createRouteHandler(method, routePath, lastHandler);
-        const middlewareList = middlewares.reverse().filter((value) => typeof value === "function");
+        const middlewareList = middlewares
+            .reverse()
+            .filter((value) => typeof value === "function")
+            .map((middleware) => wrapMiddleware(middleware));
         this.router[method](routePath, ...middlewareList, routeHandler);
         return this;
     }
     use(pathOrMiddleware, ...middlewares) {
         if (typeof pathOrMiddleware !== "string") {
-            this.router.use(pathOrMiddleware, ...middlewares);
+            this.router.use(wrapMiddleware(pathOrMiddleware), ...middlewares.map((middleware) => wrapMiddleware(middleware)));
             return this;
         }
-        this.router.use(joinPaths(this.prefix, pathOrMiddleware), ...middlewares);
+        this.router.use(joinPaths(this.prefix, pathOrMiddleware), ...middlewares.map((middleware) => wrapMiddleware(middleware)));
         return this;
     }
     at(path) {

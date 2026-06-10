@@ -4,7 +4,7 @@ import { createRuntimeContainer, flattenRegistry, validateRuntimePackages } from
 import { paws } from "@sculptor/paws";
 import { createRouter } from "@sculptor/router";
 import { requestContextMiddleware } from "./context.js";
-import { createFrameworkErrorMiddleware } from "./errors.js";
+import { createFrameworkErrorMiddleware, RuntimeError } from "./errors.js";
 import { logRegistryState } from "./warnings.js";
 const resolvePort = (port, envPort, fallback) => {
     if (port !== undefined) {
@@ -18,6 +18,21 @@ const resolvePort = (port, envPort, fallback) => {
     }
     const numericFallback = Number(fallback);
     return Number.isNaN(numericFallback) ? 3000 : numericFallback;
+};
+const isPromiseLike = (value) => (typeof value === "object" || typeof value === "function") &&
+    value !== null &&
+    "then" in value &&
+    typeof value.then === "function";
+const wrapRequestHandler = (handler) => (req, res, next) => {
+    try {
+        const result = handler(req, res, next);
+        if (isPromiseLike(result)) {
+            void Promise.resolve(result).catch(next);
+        }
+    }
+    catch (error) {
+        next(error);
+    }
 };
 const createApp = () => {
     const app = express();
@@ -41,12 +56,17 @@ const bootstrap = ({ registry: appRegistry, rootDir = process.cwd(), port, liste
     const container = createRuntimeContainer(appRegistry);
     const dependencyIssues = container.validate();
     if (dependencyIssues.length > 0) {
-        throw new Error(dependencyIssues
+        throw new RuntimeError(dependencyIssues
             .map((issue) => issue.reason)
-            .join("\n"));
+            .join("\n"), {
+            code: "DEPENDENCY_VALIDATION_ERROR",
+            details: {
+                issues: dependencyIssues.map((issue) => issue.reason)
+            }
+        });
     }
     for (const middleware of flattenedRegistry.middlewares) {
-        app.use(middleware);
+        app.use(wrapRequestHandler(middleware));
     }
     const router = createRouter({
         controllers: flattenedRegistry.controllers,

@@ -19,4 +19,11 @@ export declare class RuntimeError extends SculptorError {
     constructor(message?: string, options?: Omit<SculptorErrorOptions, "status">);
 }
 export declare const normalizeError: (error: unknown) => SculptorError;
+export declare const toFrameworkErrorResponse: (error: SculptorError) => {
+    error: {
+        code: string;
+        message: string;
+        status: number;
+    };
+};
 export declare const createFrameworkErrorMiddleware: (onError?: FrameworkErrorHook) => ErrorRequestHandler;

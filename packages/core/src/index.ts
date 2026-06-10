@@ -20,6 +20,7 @@ export {
   RuntimeError,
   SculptorError,
   normalizeError,
+  toFrameworkErrorResponse,
   createFrameworkErrorMiddleware
 } from "./errors.js";
 export type {

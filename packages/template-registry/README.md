@@ -4,8 +4,8 @@ The SculptorTS template-registry package hosts scaffold and generator templates 
 
 ## Version Notes
 
-- Pre-release line: `v0.3.10`
-- Current package version: `0.3.10`
+- Pre-release line: `v0.3.x`
+- Current package version: `0.3.11`
 - This pre-release line keeps the template registry focused on scaffold and generator content while the CLI owns orchestration, package registry updates, `AGENTS.md` generation, and exact file command flows.
 - Expect minor template adjustments and fixes until `v1.0.0`.
 
