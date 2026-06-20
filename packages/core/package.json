@@ -1,6 +1,6 @@
 {
   "name": "@sculptor/core",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -27,7 +27,7 @@
   "dependencies": {
     "@sculptor/config": "^1.0.2",
     "@sculptor/di": "^1.0.2",
-    "@sculptor/paws": "^1.0.2",
+    "@sculptor/paws": "^1.0.3",
     "@sculptor/router": "^1.0.2",
     "express": "^4.21.2",
     "reflect-metadata": "^0.2.2"
