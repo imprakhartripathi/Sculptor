@@ -1,10 +1,10 @@
-import express from "express";
 import { loadConfig } from "@sculptor/config";
 import { createRuntimeContainer, flattenRegistry, validateRuntimePackages } from "./packages.js";
 import { paws } from "@sculptor/paws";
 import { createRouter } from "@sculptor/router";
-import { requestContextMiddleware } from "./context.js";
+import { createApp } from "./app.js";
 import { createFrameworkErrorMiddleware, RuntimeError } from "./errors.js";
+import { resolveRootDir } from "./root.js";
 import { logRegistryState } from "./warnings.js";
 const resolvePort = (port, envPort, fallback) => {
     if (port !== undefined) {
@@ -34,15 +34,9 @@ const wrapRequestHandler = (handler) => (req, res, next) => {
         next(error);
     }
 };
-const createApp = () => {
-    const app = express();
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
-    app.use(requestContextMiddleware());
-    return app;
-};
-const bootstrap = ({ registry: appRegistry, rootDir = process.cwd(), port, listen = true, onError }) => {
-    const loadedConfig = loadConfig(rootDir);
+const bootstrap = ({ registry: appRegistry, rootDir, app: appBuilder, port, listen = true, onError }) => {
+    const resolvedRootDir = resolveRootDir(rootDir);
+    const loadedConfig = loadConfig(resolvedRootDir);
     const resolvedPort = resolvePort(port, process.env.PORT, loadedConfig.runtime.app?.port);
     const prefix = loadedConfig.runtime.app?.prefix ?? "";
     const loggingEnabled = loadedConfig.framework.logging?.enabled !== false;
@@ -51,8 +45,8 @@ const bootstrap = ({ registry: appRegistry, rootDir = process.cwd(), port, liste
         console.log(`[Sculptor] Mode: development | Port: ${resolvedPort}`);
     }
     validateRuntimePackages(appRegistry);
-    logRegistryState(rootDir, appRegistry);
-    const app = createApp();
+    logRegistryState(resolvedRootDir, appRegistry);
+    const app = appBuilder?.instance ?? createApp().instance;
     const container = createRuntimeContainer(appRegistry);
     const dependencyIssues = container.validate();
     if (dependencyIssues.length > 0) {
@@ -80,7 +74,7 @@ const bootstrap = ({ registry: appRegistry, rootDir = process.cwd(), port, liste
         app,
         router,
         resolvedPort,
-        rootDir,
+        rootDir: resolvedRootDir,
         listen
     };
 };

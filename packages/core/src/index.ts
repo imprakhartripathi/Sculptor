@@ -11,8 +11,10 @@ export {
   Service,
   createContainer
 } from "@sculptor/di";
+export { createApp } from "./app.js";
 export { createRequestContext, ensureRequestContext, requestContextMiddleware } from "./context.js";
 export { flattenRegistry, createRuntimeContainer, validateRuntimePackages } from "./packages.js";
+export { findAppRoot, resolveRootDir } from "./root.js";
 export { bootstrapApp, startApp } from "./runtime.js";
 export { registry } from "./registry.js";
 export {
@@ -41,6 +43,7 @@ export type {
   Nxt,
   Err,
   RouteRuntimeContext,
+  SculptorExpressBuilder,
   StartAppBootstrapOptions,
   StartAppOptions
 } from "./types.js";

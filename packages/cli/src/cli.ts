@@ -70,6 +70,7 @@ type Command =
   | "install"
   | "i"
   | "update"
+  | "project"
   | "generate"
   | "g"
   | "pkg"
@@ -116,6 +117,7 @@ const isCommand = (value: string): value is Command =>
     "install",
     "i",
     "update",
+    "project",
     "generate",
     "g",
     "pkg",
@@ -262,6 +264,196 @@ const extractOutputDir = (
 
 const normalizePathLike = (value: string): string =>
   value.replace(/\\/g, "/").replace(/\./g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+
+const parseSemver = (value: string): [number, number, number] | null => {
+  const match = value.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
+
+  if (!match) {
+    return null;
+  }
+
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+};
+
+const compareSemver = (left: string, right: string): number | null => {
+  const leftParts = parseSemver(left);
+  const rightParts = parseSemver(right);
+
+  if (!leftParts || !rightParts) {
+    return null;
+  }
+
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
+
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+
+  return 0;
+};
+
+const classifySemverChange = (
+  currentVersion: string,
+  nextVersion: string
+): "same" | "major" | "minor" | "patch" | "unknown" => {
+  const current = parseSemver(currentVersion);
+  const next = parseSemver(nextVersion);
+
+  if (!current || !next) {
+    return "unknown";
+  }
+
+  if (next[0] !== current[0]) {
+    return "major";
+  }
+
+  if (next[1] !== current[1]) {
+    return "minor";
+  }
+
+  if (next[2] !== current[2]) {
+    return "patch";
+  }
+
+  return "same";
+};
+
+const stripVersionPrefix = (value: string): string => value.replace(/^[~^=<>\s]*/, "").trim();
+
+const readFileSpecifierVersion = (specifier: string, cwd: string): string | undefined => {
+  const trimmed = specifier.trim();
+
+  if (!trimmed.startsWith("file:")) {
+    return undefined;
+  }
+
+  const rawTarget = trimmed.slice("file:".length).trim();
+  if (!rawTarget) {
+    return undefined;
+  }
+
+  const targetPath = path.isAbsolute(rawTarget) ? rawTarget : path.resolve(cwd, rawTarget);
+  const packageJson = readPackageJson(path.join(targetPath, "package.json"));
+
+  if (!packageJson) {
+    return undefined;
+  }
+
+  return typeof packageJson.version === "string" ? packageJson.version : undefined;
+};
+
+const readPackageJson = (filePath: string): Record<string, unknown> | undefined => {
+  if (!fs.existsSync(filePath)) {
+    return undefined;
+  }
+
+  const raw = fs.readFileSync(filePath, "utf8");
+  if (!raw.trim()) {
+    return undefined;
+  }
+
+  return JSON.parse(raw) as Record<string, unknown>;
+};
+
+const writePackageJson = (filePath: string, value: Record<string, unknown>): void => {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+};
+
+const findSculptorDependencyVersions = (
+  packageJson: Record<string, unknown>,
+  cwd: string
+): Array<{ name: string; version: string; source: "dependencies" | "devDependencies" | "peerDependencies" | "optionalDependencies" }> => {
+  const sources: Array<"dependencies" | "devDependencies" | "peerDependencies" | "optionalDependencies"> = [
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies"
+  ];
+  const result: Array<{ name: string; version: string; source: "dependencies" | "devDependencies" | "peerDependencies" | "optionalDependencies" }> = [];
+
+  for (const source of sources) {
+    const section = packageJson[source];
+
+    if (!section || typeof section !== "object" || Array.isArray(section)) {
+      continue;
+    }
+
+    for (const [name, rawVersion] of Object.entries(section as Record<string, unknown>)) {
+      if (!name.startsWith("@sculptor/") || typeof rawVersion !== "string") {
+        continue;
+      }
+
+      const fileVersion = readFileSpecifierVersion(rawVersion, cwd);
+
+      result.push({
+        name,
+        version: fileVersion ?? stripVersionPrefix(rawVersion),
+        source
+      });
+    }
+  }
+
+  return result;
+};
+
+const applySculptorVersionUpdate = (
+  packageJson: Record<string, unknown>,
+  nextVersion: string
+): Record<string, unknown> => {
+  const updated: Record<string, unknown> = {
+    ...packageJson
+  };
+
+  for (const source of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const) {
+    const section = updated[source];
+
+    if (!section || typeof section !== "object" || Array.isArray(section)) {
+      continue;
+    }
+
+    const nextSection = { ...(section as Record<string, unknown>) };
+
+    for (const name of Object.keys(nextSection)) {
+      if (!name.startsWith("@sculptor/")) {
+        continue;
+      }
+
+      nextSection[name] = `^${nextVersion}`;
+    }
+
+    updated[source] = nextSection;
+  }
+
+  return updated;
+};
+
+const captureSpawnOutput = (
+  command: string,
+  args: string[],
+  cwd: string,
+  spawn: typeof spawnSync,
+  env?: NodeJS.ProcessEnv
+): string => {
+  const result = spawn(command, args, {
+    cwd,
+    stdio: "pipe",
+    encoding: "utf8",
+    shell: process.platform === "win32",
+    env: {
+      ...process.env,
+      ...env
+    }
+  });
+
+  if (result.status && result.status !== 0) {
+    throw new Error(`Failed to run ${command} ${args.join(" ")}.`);
+  }
+
+  const stdout = typeof result.stdout === "string" ? result.stdout : Buffer.from(result.stdout ?? "").toString("utf8");
+  return stdout.trim();
+};
 
 const isRegistryManagedGeneratedFile = (filePath: string): boolean => {
   const normalized = filePath.replace(/\\/g, "/");
@@ -560,7 +752,7 @@ const printHelp = (topic: string | undefined, log: (...args: unknown[]) => void)
   }
 
   if (topic === "update") {
-    log(`# Update\n\nUsage: \`sc update\`\n\nUpdates the globally installed Sculptor CLI package.`);
+    log(`# Update\n\nUsage:\n\n- \`sc update\` to refresh the globally installed Sculptor CLI package\n- \`sc update project\` to upgrade the current Sculptor project dependencies`);
     return;
   }
 
@@ -604,7 +796,7 @@ const resolveProjectMetadata = async (
   const appName =
     getFlagValue(args, ["--name"]) ?? positional[0] ?? (await ask("App name"));
   const version =
-    getFlagValue(args, ["--version"]) ?? (await ask("Version", "0.1.0"));
+    getFlagValue(args, ["--version"]) ?? (await ask("Version", "1.1.0"));
   const modeInput = getFlagValue(args, ["--style"]) ??
     (explicitMode
       ? readModeFromFlags(args, defaultMode)
@@ -724,6 +916,82 @@ const updateGlobalCliPackage = (
   );
 };
 
+const updateProjectPackageVersions = async (
+  args: string[],
+  cwd: string,
+  spawn: typeof spawnSync,
+  prompt: PromptFn,
+  log: (...args: unknown[]) => void,
+  error: (...args: unknown[]) => void
+): Promise<void> => {
+  const appRoot = requireAppRoot(cwd, "sc update project");
+  const force = getFlagPresence(args, ["--force"]);
+  const packageJsonPath = path.join(appRoot, "package.json");
+  const packageJson = readPackageJson(packageJsonPath);
+
+  if (!packageJson) {
+    error("No package.json found for the current Sculptor project.");
+    throw new Error("No package.json found for the current Sculptor project.");
+  }
+
+  const sculptorDependencies = findSculptorDependencyVersions(packageJson, appRoot);
+
+  if (sculptorDependencies.length === 0) {
+    error("No Sculptor dependencies were found in package.json.");
+    throw new Error("No Sculptor dependencies were found in package.json.");
+  }
+
+  const dependencyVersions = new Map(sculptorDependencies.map((dependency) => [dependency.name, dependency.version]));
+  const currentVersion =
+    (dependencyVersions.get("@sculptor/core") ?? sculptorDependencies.map((dependency) => dependency.version).find((version) => Boolean(parseSemver(version)))) ??
+    "0.0.0";
+
+  const latestVersion = captureSpawnOutput(
+    "npm",
+    ["view", "@sculptor/core", "version", "--json"],
+    appRoot,
+    spawn
+  ).replace(/^"|"$/g, "").trim();
+
+  const changeType = classifySemverChange(currentVersion, latestVersion);
+
+  if (changeType === "unknown") {
+    error(`Unable to compare Sculptor versions: ${currentVersion} -> ${latestVersion}`);
+    throw new Error(`Unable to compare Sculptor versions: ${currentVersion} -> ${latestVersion}`);
+  }
+
+  if (changeType === "same") {
+    log(`Project is already on Sculptor ${latestVersion}.`);
+    return;
+  }
+
+  log(
+    `Sculptor project update detected: ${currentVersion} -> ${latestVersion}. Major updates can break runtime. Update at your own risk.`
+  );
+
+  if (changeType === "major" && !force) {
+    error(`Major updates require confirmation. Run "sc update project --force" to continue.`);
+    throw new Error(`Major updates require confirmation. Run "sc update project --force" to continue.`);
+  }
+
+  if (changeType !== "major" && !force) {
+    const answer = (await prompt("Proceed with the project update? (y/n)", "n")).trim().toLowerCase();
+
+    if (!answer.startsWith("y")) {
+      log("Project update cancelled.");
+      return;
+    }
+  }
+
+  const nextPackageJson = applySculptorVersionUpdate(packageJson, latestVersion);
+  writePackageJson(packageJsonPath, nextPackageJson);
+
+  const packageManager = detectPackageManager();
+  runSpawn(packageManager, ["install"], appRoot, spawn, log);
+
+  log(`Updated Sculptor project packages to ${latestVersion}.`);
+};
+
 const handleNew = async (
   args: string[],
   cwd: string,
@@ -780,11 +1048,17 @@ const handleInstall = (
 };
 
 const handleUpdate = (
+  args: string[],
   cwd: string,
+  prompt: PromptFn,
   spawn: typeof spawnSync,
   log: (...args: unknown[]) => void,
   error: (...args: unknown[]) => void
-): void => {
+): void | Promise<void> => {
+  if (args[0] === "project") {
+    return updateProjectPackageVersions(args.slice(1), cwd, spawn, prompt, log, error);
+  }
+
   requireOutsideAppRoot(cwd, "sc update");
 
   try {
@@ -1220,7 +1494,7 @@ export const runCli = async (
       handleInstall(args, cwd, spawn, log, error);
       return;
     case "update":
-      handleUpdate(cwd, spawn, log, error);
+    await handleUpdate(args, cwd, prompt, spawn, log, error);
       return;
     case "doctor":
       handleDoctor(cwd, log, error);

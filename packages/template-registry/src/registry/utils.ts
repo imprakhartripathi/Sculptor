@@ -91,6 +91,40 @@ export const toRoutePath = (value: string): string => {
   return `${kebab}s`;
 };
 
+const parseSemver = (value: string): [number, number, number] | null => {
+  const match = value.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
+
+  if (!match) {
+    return null;
+  }
+
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+};
+
+export const isVersionAtLeast = (value: string, minimum: string): boolean => {
+  const parsedValue = parseSemver(value);
+  const parsedMinimum = parseSemver(minimum);
+
+  if (!parsedValue || !parsedMinimum) {
+    return false;
+  }
+
+  for (let index = 0; index < 3; index += 1) {
+    const current = parsedValue[index] ?? 0;
+    const threshold = parsedMinimum[index] ?? 0;
+
+    if (current > threshold) {
+      return true;
+    }
+
+    if (current < threshold) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export const specImportPath = (sourcePath: string): string =>
   normalizeRelativePath(path.posix.relative("src/tests", sourcePath)).replace(/\.ts$/, ".js");
 

@@ -47,6 +47,31 @@ const scaffoldFixture = async (): Promise<{ cwd: string; projectRoot: string }> 
   return { cwd, projectRoot };
 };
 
+const writeProjectUpdateManifest = (projectRoot: string, version: string): void => {
+  fs.writeFileSync(
+    path.join(projectRoot, "package.json"),
+    JSON.stringify(
+      {
+        name: "fixture-app",
+        version: "1.0.0",
+        dependencies: {
+          express: "^4.21.2",
+          "reflect-metadata": "^0.2.2",
+          "@sculptor/core": `^${version}`,
+          "@sculptor/paws": `^${version}`
+        },
+        devDependencies: {
+          "@sculptor/cli": `^${version}`,
+          "@sculptor/config": `^${version}`,
+          "@sculptor/router": `^${version}`
+        }
+      },
+      null,
+      2
+    )
+  );
+};
+
 describe("cli", () => {
   it("prints help", async () => {
     const logs: string[] = [];
@@ -700,6 +725,85 @@ describe("cli", () => {
         error: () => undefined
       })
     ).rejects.toThrow("sc update can only be run outside a Sculptor app root.");
+  });
+
+  it("requires force for major project updates", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    writeProjectUpdateManifest(projectRoot, "1.1.0");
+
+    const spawn = vi.fn((command: string, args: string[]) => {
+      if (command === "npm" && args[0] === "view") {
+        return { status: 0, stdout: "\"2.0.0\"\n" } as const;
+      }
+
+      return { status: 0 } as const;
+    });
+
+    await expect(
+      runCli(["node", "sc", "update", "project"], {
+        cwd: projectRoot,
+        spawn: spawn as never,
+        log: () => undefined,
+        error: () => undefined
+      })
+    ).rejects.toThrow('Major updates require confirmation. Run "sc update project --force" to continue.');
+
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, "package.json"), "utf8")
+    ) as { dependencies: Record<string, string> };
+    expect(packageJson.dependencies["@sculptor/core"]).toBe("^1.1.0");
+    expect(spawn).toHaveBeenCalledWith(
+      "npm",
+      ["view", "@sculptor/core", "version", "--json"],
+      expect.objectContaining({ cwd: projectRoot, stdio: "pipe", encoding: "utf8" })
+    );
+  });
+
+  it("prompts and updates project dependencies for minor or patch releases", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    writeProjectUpdateManifest(projectRoot, "1.1.0");
+    const logs: string[] = [];
+    const prompt = vi.fn().mockResolvedValue("y");
+    const spawn = vi.fn((command: string, args: string[]) => {
+      if (command === "npm" && args[0] === "view") {
+        return { status: 0, stdout: "\"1.1.1\"\n" } as const;
+      }
+
+      if (command === "npm" && args[0] === "install") {
+        return { status: 0 } as const;
+      }
+
+      return { status: 0 } as const;
+    });
+
+    await runCli(["node", "sc", "update", "project"], {
+      cwd: projectRoot,
+      prompt,
+      spawn: spawn as never,
+      log: (value) => logs.push(String(value)),
+      error: (value) => logs.push(String(value))
+    });
+
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, "package.json"), "utf8")
+    ) as {
+      dependencies: Record<string, string>;
+      devDependencies: Record<string, string>;
+    };
+
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(logs.join("\n")).toContain("Sculptor project update detected: 1.1.0 -> 1.1.1");
+    expect(logs.join("\n")).toContain("Major updates can break runtime. Update at your own risk.");
+    expect(packageJson.dependencies["@sculptor/core"]).toBe("^1.1.1");
+    expect(packageJson.dependencies["@sculptor/paws"]).toBe("^1.1.1");
+    expect(packageJson.devDependencies["@sculptor/cli"]).toBe("^1.1.1");
+    expect(packageJson.devDependencies["@sculptor/config"]).toBe("^1.1.1");
+    expect(packageJson.devDependencies["@sculptor/router"]).toBe("^1.1.1");
+    expect(spawn).toHaveBeenCalledWith(
+      "npm",
+      ["install"],
+      expect.objectContaining({ cwd: projectRoot, stdio: "inherit" })
+    );
   });
 
   it("generates controller, module, middleware, type, and route artifacts independently", async () => {

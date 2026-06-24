@@ -44,6 +44,31 @@ export const toRoutePath = (value) => {
     }
     return `${kebab}s`;
 };
+const parseSemver = (value) => {
+    const match = value.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
+    if (!match) {
+        return null;
+    }
+    return [Number(match[1]), Number(match[2]), Number(match[3])];
+};
+export const isVersionAtLeast = (value, minimum) => {
+    const parsedValue = parseSemver(value);
+    const parsedMinimum = parseSemver(minimum);
+    if (!parsedValue || !parsedMinimum) {
+        return false;
+    }
+    for (let index = 0; index < 3; index += 1) {
+        const current = parsedValue[index] ?? 0;
+        const threshold = parsedMinimum[index] ?? 0;
+        if (current > threshold) {
+            return true;
+        }
+        if (current < threshold) {
+            return false;
+        }
+    }
+    return true;
+};
 export const specImportPath = (sourcePath) => normalizeRelativePath(path.posix.relative("src/tests", sourcePath)).replace(/\.ts$/, ".js");
 export const resolveGeneratorOutputDir = (kind, outputDir, name) => {
     if (outputDir) {

@@ -4,6 +4,7 @@ import path from "node:path";
 import { ensureDir, writeTextFile } from "../fs.js";
 import {
   normalizeRelativePath,
+  isVersionAtLeast,
   resolveFileStem,
   resolveGeneratorOutputDir,
   ScaffoldMode,
@@ -31,6 +32,7 @@ import {
   healthServiceTemplate,
   healthTypesTemplate,
   mainSpecTemplate,
+  legacyMainTemplate,
   mainTemplate,
   rootGitignoreTemplate,
   propsTemplate,
@@ -104,6 +106,9 @@ const collectSpecPaths = (dir: string, rootDir: string = dir): string[] => {
   return specs.sort();
 };
 
+const resolveMainStartupTemplate = (metadata: ScaffoldProjectMetadata): string =>
+  isVersionAtLeast(metadata.version, "1.1.0") ? mainTemplate : legacyMainTemplate;
+
 export const syncTestHarness = (targetDir: string): void => {
   const testsDir = path.join(targetDir, "src", "tests");
   ensureDir(testsDir);
@@ -125,7 +130,7 @@ const appShellFiles = (metadata: ScaffoldProjectMetadata): Record<string, string
     metadata.testing
   ),
   "props.json": propsTemplate,
-  "src/main.ts": mainTemplate,
+  "src/main.ts": resolveMainStartupTemplate(metadata),
   "src/registry.ts": registryTemplate(metadata.mode)
 });
 

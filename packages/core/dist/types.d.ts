@@ -1,6 +1,7 @@
 import type express from "express";
 import type { RequestHandler } from "express";
 import type { PackageToken, ProviderToken, SculptorFunctionalHandler, SculptorFunctionalController, SculptorFunctionalPackage, SculptorFunctionalRepository, SculptorFunctionalService } from "@sculptor/di";
+import type { SculptorExpressBuilder } from "./app.js";
 import type { ControllerClass, Err as RouterErr, Nxt as RouterNxt, Req as RouterReq, Res as RouterRes, RouterSource, RouterErrorHandler } from "@sculptor/router";
 import type { SculptorError } from "./errors.js";
 export interface RegistryShape {
@@ -11,7 +12,7 @@ export interface RegistryShape {
     repositories?: ProviderToken[];
     middlewares?: RequestHandler[];
 }
-export type { SculptorFunctionalController, SculptorFunctionalHandler, SculptorFunctionalPackage, SculptorFunctionalRepository, SculptorFunctionalService };
+export type { SculptorExpressBuilder, SculptorFunctionalController, SculptorFunctionalHandler, SculptorFunctionalPackage, SculptorFunctionalRepository, SculptorFunctionalService };
 export type Req = RouterReq;
 export type Res = RouterRes;
 export type Nxt = RouterNxt;
@@ -43,6 +44,7 @@ export type FrameworkErrorHook = (error: SculptorError, context: FrameworkErrorC
 export interface BootstrapAppOptions {
     registry: RegistryShape;
     rootDir?: string;
+    app?: SculptorExpressBuilder;
     port?: number;
     listen?: boolean;
     onError?: FrameworkErrorHook;

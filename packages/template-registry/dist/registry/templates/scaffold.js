@@ -221,7 +221,15 @@ export const propsTemplate = `{
     "prefix": "/api"
   }
 }`;
-export const mainTemplate = `import { paws } from "@sculptor/paws";
+export const legacyMainTemplate = `/**
+ * Legacy startup template.
+ *
+ * Kept for backwards compatibility.
+ *
+ * New applications should prefer
+ * the Express builder startup style.
+ */
+import { paws } from "@sculptor/paws";
 import { startApp } from "@sculptor/core";
 import { fileURLToPath } from "node:url";
 import { registry } from "./registry.js";
@@ -232,6 +240,46 @@ process.env.SCULPTOR_ROOT_DIR = appRoot;
 paws.boot();
 
 void startApp({ registry, rootDir: appRoot });
+`;
+export const mainTemplate = `import { createApp, startApp } from "@sculptor/core";
+import { paws } from "@sculptor/paws";
+
+import { registry } from "./registry.js";
+
+const app = createApp();
+
+/**
+ * Sculptor Express Builder
+ *
+ * Configure native Express features.
+ *
+ * Examples:
+ *
+ * app
+ *   .use(compression())
+ *   .disable("x-powered-by")
+ *   .set("trust proxy", true);
+ *
+ *
+ * Warning
+ *
+ * This configures the underlying
+ * Express application.
+ *
+ * If you are unsure what a setting
+ * does it is recommended to leave
+ * it unchanged.
+ *
+ * Sculptor defaults are production safe.
+ */
+app.disable("x-powered-by");
+
+paws.boot();
+
+void startApp({
+  registry,
+  app
+});
 `;
 export const registryTemplate = (mode) => {
     if (mode === "decorator") {
