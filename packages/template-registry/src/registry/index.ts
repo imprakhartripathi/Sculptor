@@ -31,6 +31,7 @@ import {
   healthServiceTemplate,
   healthTypesTemplate,
   mainSpecTemplate,
+  legacyMainTemplate,
   mainTemplate,
   rootGitignoreTemplate,
   propsTemplate,
@@ -104,6 +105,8 @@ const collectSpecPaths = (dir: string, rootDir: string = dir): string[] => {
   return specs.sort();
 };
 
+const resolveMainStartupTemplate = (_metadata: ScaffoldProjectMetadata): string => mainTemplate;
+
 export const syncTestHarness = (targetDir: string): void => {
   const testsDir = path.join(targetDir, "src", "tests");
   ensureDir(testsDir);
@@ -125,7 +128,7 @@ const appShellFiles = (metadata: ScaffoldProjectMetadata): Record<string, string
     metadata.testing
   ),
   "props.json": propsTemplate,
-  "src/main.ts": mainTemplate,
+  "src/main.ts": resolveMainStartupTemplate(metadata),
   "src/registry.ts": registryTemplate(metadata.mode)
 });
 

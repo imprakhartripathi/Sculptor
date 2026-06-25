@@ -19,11 +19,11 @@ const linkDir = (source: string, destination: string): void => {
   fs.symlinkSync(source, destination, "junction");
 };
 
-const scaffoldFixture = async (): Promise<{ cwd: string; projectRoot: string }> => {
+const scaffoldFixture = async (version = "0.1.0"): Promise<{ cwd: string; projectRoot: string }> => {
   const cwd = makeTempDir();
   const prompt = async (question: string, defaultValue?: string): Promise<string> => {
     if (question === "App name") return "fixture-app";
-    if (question === "Version") return "1.0.0";
+    if (question === "Version") return version;
     if (question.startsWith("Select a scaffolding style")) return "1";
     if (question === "Framework lock") return "true";
     if (question.startsWith("Select a dev server")) return "1";
@@ -69,7 +69,7 @@ describe("scaffolded app", () => {
   });
 
   it("boots a scaffolded app and serves health endpoints", async () => {
-    const { projectRoot } = await scaffoldFixture();
+    const { projectRoot } = await scaffoldFixture("1.1.0");
 
     const buildChild = spawn("node", [path.join(repoRoot, "packages", "cli", "bin", "sc.js"), "build"], {
       cwd: projectRoot,
@@ -82,13 +82,19 @@ describe("scaffolded app", () => {
     const distMain = fs.readFileSync(path.join(projectRoot, "dist/main.js"), "utf8");
     const distRegistry = fs.readFileSync(path.join(projectRoot, "dist/registry.js"), "utf8");
 
-    expect(distMain).toContain('startApp({ registry, rootDir: appRoot })');
+    const srcMain = fs.readFileSync(path.join(projectRoot, "src/main.ts"), "utf8");
+
+    expect(srcMain).toContain("const app = createApp()");
+    expect(srcMain).toContain("void startApp({");
+    expect(srcMain).toContain('import compression from "compression";');
+    expect(srcMain).toContain("npm i compression");
+    expect(distMain).toContain("createApp()");
     expect(distRegistry).toContain("HealthPackage");
     expect(distRegistry).toContain("packages: [HealthPackage]");
   }, 10000);
 
   it("creates a scaffolded workspace on disk", async () => {
-    const { projectRoot } = await scaffoldFixture();
+    const { projectRoot } = await scaffoldFixture("1.1.0");
 
     const rootPackage = JSON.parse(
       fs.readFileSync(path.join(projectRoot, "package.json"), "utf8")
@@ -145,5 +151,16 @@ describe("scaffolded app", () => {
     expect(sculptor.project.entryFile).toBe("main.ts");
     expect(sculptor.project.devServer).toBe("tsx");
     expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
+  });
+
+  it("uses the builder startup template even when the app version is older", async () => {
+    const { projectRoot } = await scaffoldFixture("1.0.0");
+
+    expect(fs.readFileSync(path.join(projectRoot, "src/main.ts"), "utf8")).toContain(
+      "const app = createApp()"
+    );
+    expect(fs.readFileSync(path.join(projectRoot, "src/main.ts"), "utf8")).toContain(
+      "void startApp({"
+    );
   });
 });

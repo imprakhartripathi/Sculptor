@@ -9,6 +9,7 @@ import type {
   SculptorFunctionalRepository,
   SculptorFunctionalService
 } from "@sculptor/di";
+import type { SculptorExpressBuilder } from "./app.js";
 import type {
   ControllerClass,
   Err as RouterErr,
@@ -30,6 +31,7 @@ export interface RegistryShape {
 }
 
 export type {
+  SculptorExpressBuilder,
   SculptorFunctionalController,
   SculptorFunctionalHandler,
   SculptorFunctionalPackage,
@@ -77,6 +79,7 @@ export type FrameworkErrorHook = (
 export interface BootstrapAppOptions {
   registry: RegistryShape;
   rootDir?: string;
+  app?: SculptorExpressBuilder;
   port?: number;
   listen?: boolean;
   onError?: FrameworkErrorHook;

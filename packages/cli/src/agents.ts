@@ -75,6 +75,7 @@ Sculptor CLI \`v${version}\`
 - \`sc ls\` and \`sc pkg\` should reflect exact stored package names.
 - \`sc doctor\` is the calm diagnostics entrypoint.
 - \`sc update\` only updates \`@sculptor/cli\`.
+- \`sc update project\` upgrades the current project's Sculptor dependency versions with version guards.
 
 ## Generator Conventions
 
@@ -94,6 +95,7 @@ Sculptor CLI \`v${version}\`
 - \`sc agents refresh\` regenerates this file.
 - \`sc doctor\` reports diagnostics without mutating the project.
 - \`sc update\` only manages the global CLI binary.
+- \`sc update project\` manages the current Sculptor app's dependency versions.
 
 ## Detected Packages
 

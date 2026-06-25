@@ -28,6 +28,7 @@ const collectSpecPaths = (dir, rootDir = dir) => {
     }
     return specs.sort();
 };
+const resolveMainStartupTemplate = (_metadata) => mainTemplate;
 export const syncTestHarness = (targetDir) => {
     const testsDir = path.join(targetDir, "src", "tests");
     ensureDir(testsDir);
@@ -42,7 +43,7 @@ const appShellFiles = (metadata) => ({
     "tsconfig.json": rootTsconfigTemplate,
     "sculptor.json": sculptorTemplate(metadata.mode, metadata.devServer, metadata.frameworkLock, metadata.testing),
     "props.json": propsTemplate,
-    "src/main.ts": mainTemplate,
+    "src/main.ts": resolveMainStartupTemplate(metadata),
     "src/registry.ts": registryTemplate(metadata.mode)
 });
 export const scaffoldProject = (metadata, targetDir) => {

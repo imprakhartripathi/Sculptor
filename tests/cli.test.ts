@@ -26,7 +26,7 @@ const scaffoldFixture = async (): Promise<{ cwd: string; projectRoot: string }> 
   const cwd = makeTempDir();
   const prompt = async (question: string, defaultValue?: string): Promise<string> => {
     if (question === "App name") return "fixture-app";
-    if (question === "Version") return "1.0.0";
+    if (question === "Version") return "0.1.0";
     if (question.startsWith("Select a scaffolding style")) return "1";
     if (question === "Framework lock") return "true";
     if (question.startsWith("Select a dev server")) return "1";
@@ -47,6 +47,53 @@ const scaffoldFixture = async (): Promise<{ cwd: string; projectRoot: string }> 
   return { cwd, projectRoot };
 };
 
+const writeProjectUpdateManifest = (
+  projectRoot: string,
+  versions: Record<string, string>
+): void => {
+  fs.writeFileSync(
+    path.join(projectRoot, "package.json"),
+    JSON.stringify(
+      {
+        name: "fixture-app",
+        version: "0.1.0",
+        dependencies: {
+          express: "^4.21.2",
+          "reflect-metadata": "^0.2.2",
+          "@sculptor/core": `^${versions["@sculptor/core"] ?? "1.1.0"}`,
+          "@sculptor/paws": `^${versions["@sculptor/paws"] ?? "1.1.0"}`
+        },
+        devDependencies: {
+          "@sculptor/cli": `^${versions["@sculptor/cli"] ?? "1.1.0"}`,
+          "@sculptor/config": `^${versions["@sculptor/config"] ?? "1.1.0"}`,
+          "@sculptor/router": `^${versions["@sculptor/router"] ?? "1.1.0"}`,
+          "@sculptor/template-registry": `^${versions["@sculptor/template-registry"] ?? "1.1.0"}`,
+          "@sculptor/di": `^${versions["@sculptor/di"] ?? "1.1.0"}`
+        }
+      },
+      null,
+      2
+    )
+  );
+};
+
+const buildProjectUpdateSpawn = (latestVersions: Record<string, string>): ReturnType<typeof vi.fn> =>
+  vi.fn((command: string, args: string[]) => {
+    if (command === "npm" && args[0] === "view") {
+      const packageName = args[1];
+
+      if (typeof packageName === "string" && packageName in latestVersions) {
+        return { status: 0, stdout: `"${latestVersions[packageName]}"\n` } as const;
+      }
+    }
+
+    if (command === "npm" && args[0] === "install") {
+      return { status: 0 } as const;
+    }
+
+    return { status: 0 } as const;
+  });
+
 describe("cli", () => {
   it("prints help", async () => {
     const logs: string[] = [];
@@ -57,6 +104,11 @@ describe("cli", () => {
 
     expect(logs.join("\n")).toContain("SculptorTS CLI");
     expect(logs.join("\n")).toContain(`v${cliVersion.version}`);
+    expect(logs.join("\n")).toContain("\x1b[34m");
+    expect(logs.join("\n")).not.toContain("# SculptorTS CLI");
+    expect(logs.join("\n")).toContain("https://github.com/imprakhartripathi/Sculptor/wiki");
+    expect(logs.join("\n")).toContain("https://www.npmjs.com/org/sculptor");
+    expect(logs.join("\n")).toContain("https://imprakhartripathi.in/Sculptor/guide");
   });
 
   it("prints version flags", async () => {
@@ -90,6 +142,31 @@ describe("cli", () => {
 
     expect(logs[0]).toContain(`SculptorTS CLI v${cliVersion.version}`);
     expect(logs.some((line) => line.startsWith("> npx tsx"))).toBe(true);
+  });
+
+  it("defaults the scaffolded app version to 0.1.0", async () => {
+    const cwd = makeTempDir();
+    const prompt = async (question: string, defaultValue?: string): Promise<string> => {
+      if (question === "App name") return "version-default-app";
+      if (question.startsWith("Select a scaffolding style")) return "1";
+      if (question === "Framework lock") return "true";
+      if (question.startsWith("Select a dev server")) return "1";
+      return defaultValue ?? "";
+    };
+
+    await runCli(["node", "sc", "new"], {
+      cwd,
+      prompt,
+      log: () => undefined,
+      error: () => undefined,
+      spawn: (() => ({ status: 0 })) as never
+    });
+
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(cwd, "version-default-app", "package.json"), "utf8")
+    ) as { version: string };
+
+    expect(packageJson.version).toBe("0.1.0");
   });
 
   it("scaffolds a new project with prompted metadata", async () => {
@@ -691,15 +768,158 @@ describe("cli", () => {
 
   it("rejects update inside a sculptor app root", async () => {
     const { projectRoot } = await scaffoldFixture();
+    const logs: string[] = [];
 
     await expect(
       runCli(["node", "sc", "update"], {
         cwd: projectRoot,
         spawn: vi.fn(() => ({ status: 0 })) as never,
+        log: (value) => logs.push(String(value)),
+        error: (value) => logs.push(String(value))
+      })
+    ).rejects.toThrow(
+      "sc update only updates the globally installed Sculptor CLI. Try"
+    );
+
+    expect(logs).toEqual([]);
+  });
+
+  it("suggests sc update when project update is run outside an app root", async () => {
+    const cwd = makeTempDir();
+    const logs: string[] = [];
+
+    await expect(
+      runCli(["node", "sc", "update", "project"], {
+        cwd,
+        spawn: vi.fn(() => ({ status: 0 })) as never,
+        log: (value) => logs.push(String(value)),
+        error: (value) => logs.push(String(value))
+      })
+    ).rejects.toThrow("sc update project can only be run from a Sculptor app root. Try");
+
+    expect(logs).toEqual([]);
+  });
+
+  it("prints a modern support report", async () => {
+    const logs: string[] = [];
+
+    await runCli(["node", "sc", "report"], {
+      log: (value) => logs.push(String(value))
+    });
+
+    const output = logs.join("\n");
+    expect(output).toContain("SculptorTS CLI");
+    expect(output).toContain(`v${cliVersion.version}`);
+    expect(output).toContain("GitHub Issues");
+    expect(output).toContain("dev@imprakhartripathi");
+    expect(output).toContain("Learn More");
+    expect(output).toContain("https://github.com/imprakhartripathi/Sculptor/issues");
+    expect(output).toContain("https://imprakhartripathi.in/Sculptor");
+    expect(output).toContain("https://github.com/imprakhartripathi/Sculptor/wiki");
+    expect(output).toContain("https://www.npmjs.com/org/sculptor");
+    expect(output).toContain("https://imprakhartripathi.in/Sculptor/guide");
+  });
+
+  it("requires force for major project updates", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    writeProjectUpdateManifest(projectRoot, {
+      "@sculptor/core": "1.1.0",
+      "@sculptor/paws": "1.1.0",
+      "@sculptor/cli": "1.1.0",
+      "@sculptor/config": "1.1.0",
+      "@sculptor/router": "1.1.0",
+      "@sculptor/template-registry": "1.1.0",
+      "@sculptor/di": "1.1.0"
+    });
+
+    const spawn = buildProjectUpdateSpawn({
+      "@sculptor/core": "2.0.0",
+      "@sculptor/paws": "1.1.1",
+      "@sculptor/cli": "1.1.2",
+      "@sculptor/config": "1.1.3",
+      "@sculptor/router": "1.1.4",
+      "@sculptor/template-registry": "1.1.5",
+      "@sculptor/di": "1.1.6"
+    });
+
+    await expect(
+      runCli(["node", "sc", "update", "project"], {
+        cwd: projectRoot,
+        spawn: spawn as never,
         log: () => undefined,
         error: () => undefined
       })
-    ).rejects.toThrow("sc update can only be run outside a Sculptor app root.");
+    ).rejects.toThrow('Major updates require confirmation. Run "sc update project --force" to continue.');
+
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, "package.json"), "utf8")
+    ) as { dependencies: Record<string, string> };
+    expect(packageJson.dependencies["@sculptor/core"]).toBe("^1.1.0");
+    expect(spawn).toHaveBeenCalledWith(
+      "npm",
+      ["view", "@sculptor/core", "version", "--json"],
+      expect.objectContaining({ cwd: projectRoot, stdio: "pipe", encoding: "utf8" })
+    );
+  });
+
+  it("prompts and updates project dependencies for minor or patch releases", async () => {
+    const { projectRoot } = await scaffoldFixture();
+    writeProjectUpdateManifest(projectRoot, {
+      "@sculptor/core": "1.1.0",
+      "@sculptor/paws": "1.1.0",
+      "@sculptor/cli": "1.1.0",
+      "@sculptor/config": "1.1.0",
+      "@sculptor/router": "1.1.0",
+      "@sculptor/template-registry": "1.1.0",
+      "@sculptor/di": "1.1.0"
+    });
+    const logs: string[] = [];
+    const prompt = vi.fn().mockResolvedValue("y");
+    const spawn = buildProjectUpdateSpawn({
+      "@sculptor/core": "1.1.1",
+      "@sculptor/paws": "1.1.2",
+      "@sculptor/cli": "1.1.3",
+      "@sculptor/config": "1.1.4",
+      "@sculptor/router": "1.1.5",
+      "@sculptor/template-registry": "1.1.6",
+      "@sculptor/di": "1.1.7"
+    });
+
+    await runCli(["node", "sc", "update", "project"], {
+      cwd: projectRoot,
+      prompt,
+      spawn: spawn as never,
+      log: (value) => logs.push(String(value)),
+      error: (value) => logs.push(String(value))
+    });
+
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, "package.json"), "utf8")
+    ) as {
+      dependencies: Record<string, string>;
+      devDependencies: Record<string, string>;
+    };
+
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(logs.join("\n")).toContain("Sculptor project update detected.");
+    expect(logs.join("\n")).toContain("@sculptor/core: 1.1.0 -> 1.1.1");
+    expect(logs.join("\n")).toContain("@sculptor/paws: 1.1.0 -> 1.1.2");
+    expect(logs.join("\n")).toContain("@sculptor/cli: 1.1.0 -> 1.1.3");
+    expect(logs.join("\n")).toContain("@sculptor/config: 1.1.0 -> 1.1.4");
+    expect(logs.join("\n")).toContain("@sculptor/router: 1.1.0 -> 1.1.5");
+    expect(logs.join("\n")).toContain("Major updates can break runtime. Update at your own risk.");
+    expect(packageJson.dependencies["@sculptor/core"]).toBe("^1.1.1");
+    expect(packageJson.dependencies["@sculptor/paws"]).toBe("^1.1.2");
+    expect(packageJson.devDependencies["@sculptor/cli"]).toBe("^1.1.3");
+    expect(packageJson.devDependencies["@sculptor/config"]).toBe("^1.1.4");
+    expect(packageJson.devDependencies["@sculptor/router"]).toBe("^1.1.5");
+    expect(packageJson.devDependencies["@sculptor/template-registry"]).toBe("^1.1.6");
+    expect(packageJson.devDependencies["@sculptor/di"]).toBe("^1.1.7");
+    expect(spawn).toHaveBeenCalledWith(
+      "npm",
+      ["install"],
+      expect.objectContaining({ cwd: projectRoot, stdio: "inherit" })
+    );
   });
 
   it("generates controller, module, middleware, type, and route artifacts independently", async () => {
@@ -859,3 +1079,28 @@ describe("cli", () => {
     ).rejects.toThrow("sc dev can only be run from a Sculptor app root.");
   });
 });
+
+  it("defaults the scaffolded app version to 0.1.0", async () => {
+    const cwd = makeTempDir();
+    const prompt = async (question: string, defaultValue?: string): Promise<string> => {
+      if (question === "App name") return "version-default-app";
+      if (question.startsWith("Select a scaffolding style")) return "1";
+      if (question === "Framework lock") return "true";
+      if (question.startsWith("Select a dev server")) return "1";
+      return defaultValue ?? "";
+    };
+
+    await runCli(["node", "sc", "new"], {
+      cwd,
+      prompt,
+      log: () => undefined,
+      error: () => undefined,
+      spawn: (() => ({ status: 0 })) as never
+    });
+
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(cwd, "version-default-app", "package.json"), "utf8")
+    ) as { version: string };
+
+    expect(packageJson.version).toBe("0.1.0");
+  });

@@ -8,7 +8,15 @@ import type { RequestHandler } from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
-import { bootstrapApp, HttpError, normalizeError, SculptorError } from "../packages/core/src/index.js";
+import {
+  bootstrapApp,
+  createApp,
+  findAppRoot,
+  HttpError,
+  normalizeError,
+  resolveRootDir,
+  SculptorError
+} from "../packages/core/src/index.js";
 import { ConfigInterpolationError, loadConfig, redactConfig } from "../packages/config/src/index.js";
 import { Controller, FunctionalRouter, createRouter, Get } from "../packages/router/src/index.js";
 import { RouteCollisionError } from "../packages/router/src/errors.js";
@@ -128,6 +136,58 @@ describe("bootstrap", () => {
     expect(result.listen).toBe(false);
     expect(result.server).toBeUndefined();
     expect(result.app).toBeDefined();
+  });
+
+  it("uses a supplied Express builder when bootstrapping", async () => {
+    const rootDir = tmpDir();
+
+    fs.writeFileSync(path.join(rootDir, "sculptor.json"), JSON.stringify({}, null, 2));
+
+    const app = createApp().set("trust proxy", true).disable("x-powered-by").locals({
+      appName: "fixture"
+    });
+
+    const result = await bootstrapApp({
+      registry: { controllers: [], routes: [], services: [] },
+      rootDir,
+      app,
+      listen: false
+    });
+
+    expect(result.app.get("trust proxy")).toBe(true);
+    expect(result.app.enabled("x-powered-by")).toBe(false);
+    expect(result.app.locals.appName).toBe("fixture");
+  });
+});
+
+describe("root discovery", () => {
+  it("finds the nearest Sculptor root", () => {
+    const rootDir = tmpDir();
+    const nestedDir = path.join(rootDir, "packages", "app", "src");
+
+    fs.mkdirSync(nestedDir, { recursive: true });
+    fs.writeFileSync(path.join(rootDir, "sculptor.json"), JSON.stringify({}, null, 2));
+
+    expect(findAppRoot(nestedDir)).toBe(rootDir);
+  });
+
+  it("honors an explicit rootDir before env discovery", () => {
+    const rootDir = tmpDir();
+    const envRoot = tmpDir();
+    const previousRootDir = process.env.SCULPTOR_ROOT_DIR;
+
+    process.env.SCULPTOR_ROOT_DIR = envRoot;
+
+    try {
+      expect(resolveRootDir(rootDir)).toBe(rootDir);
+      expect(resolveRootDir()).toBe(envRoot);
+    } finally {
+      if (previousRootDir === undefined) {
+        delete process.env.SCULPTOR_ROOT_DIR;
+      } else {
+        process.env.SCULPTOR_ROOT_DIR = previousRootDir;
+      }
+    }
   });
 });
 

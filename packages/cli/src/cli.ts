@@ -70,6 +70,7 @@ type Command =
   | "install"
   | "i"
   | "update"
+  | "project"
   | "generate"
   | "g"
   | "pkg"
@@ -89,7 +90,8 @@ type Command =
   | "config"
   | "add"
   | "agents"
-  | "doctor";
+  | "doctor"
+  | "report";
 type PromptFn = (question: string, defaultValue?: string) => Promise<string>;
 const cliPackageVersion = JSON.parse(
   fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")
@@ -116,6 +118,7 @@ const isCommand = (value: string): value is Command =>
     "install",
     "i",
     "update",
+    "project",
     "generate",
     "g",
     "pkg",
@@ -135,7 +138,8 @@ const isCommand = (value: string): value is Command =>
     "config",
     "add",
     "agents",
-    "doctor"
+    "doctor",
+    "report"
   ].includes(value);
 
 const isFlag = (value: string): boolean => value.startsWith("-");
@@ -164,6 +168,24 @@ const sculptorDevBanner = (version: string): string => String.raw`
    ╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═╝   
                                                                          
                         SculptorTS CLI v${version}`;
+
+const ansi = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  blue: "\x1b[34m",
+  cyan: "\x1b[36m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m"
+} as const;
+
+const color = (value: string, code: string): string => `${code}${value}${ansi.reset}`;
+const blue = (value: string): string => color(value, ansi.blue);
+const cyan = (value: string): string => color(value, ansi.cyan);
+const yellow = (value: string): string => color(value, ansi.yellow);
+const bold = (value: string): string => color(value, ansi.bold);
+const dim = (value: string): string => color(value, ansi.dim);
+const link = (label: string, url: string): string => `${blue(label)} ${dim(url)}`;
 
 const buildBanner = (title: string, subtitle?: string): string => {
   if (title === "SculptorTS CLI" && subtitle === `v${versionLabel}`) {
@@ -198,6 +220,56 @@ const buildBanner = (title: string, subtitle?: string): string => {
     subtitle ? center(subtitle) : center(""),
     line
   ].join("\n");
+};
+
+const formatInlineMarkdown = (value: string): string =>
+  value
+    .replace(/`([^`]+)`/g, (_, code: string) => blue(code))
+    .replace(/\*\*([^*]+)\*\*/g, (_, text: string) => bold(text))
+    .replace(/https?:\/\/[^\s)]+/g, (url) => blue(url));
+
+const formatHelpMarkdown = (markdown: string): string => {
+  const lines = markdown.split(/\r?\n/);
+  const rendered: string[] = [];
+  let inCodeBlock = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+
+    if (line.startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+
+    if (inCodeBlock) {
+      rendered.push(dim(`    ${line}`));
+      continue;
+    }
+
+    if (!line.trim()) {
+      rendered.push("");
+      continue;
+    }
+
+    if (line.startsWith("# ")) {
+      rendered.push(`${bold(cyan(line.slice(2)))}`);
+      continue;
+    }
+
+    if (line.startsWith("## ")) {
+      rendered.push(`${bold(yellow(line.slice(3)))}`);
+      continue;
+    }
+
+    if (line.startsWith("- ")) {
+      rendered.push(`  - ${formatInlineMarkdown(line.slice(2))}`);
+      continue;
+    }
+
+    rendered.push(formatInlineMarkdown(line));
+  }
+
+  return rendered.join("\n");
 };
 
 const printBanner = (log: (...args: unknown[]) => void, title: string, subtitle?: string): void => {
@@ -235,15 +307,7 @@ const findAppRoot = (cwd: string): string | undefined => {
   }
 };
 
-const requireOutsideAppRoot = (cwd: string, command: string): string => {
-  const appRoot = findAppRoot(cwd);
-
-  if (appRoot) {
-    throw new Error(`${command} can only be run outside a Sculptor app root.`);
-  }
-
-  return cwd;
-};
+const formatSuggestion = (command: string): string => blue(command);
 
 const extractOutputDir = (
   args: string[]
@@ -262,6 +326,198 @@ const extractOutputDir = (
 
 const normalizePathLike = (value: string): string =>
   value.replace(/\\/g, "/").replace(/\./g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+
+const parseSemver = (value: string): [number, number, number] | null => {
+  const match = value.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
+
+  if (!match) {
+    return null;
+  }
+
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+};
+
+const compareSemver = (left: string, right: string): number | null => {
+  const leftParts = parseSemver(left);
+  const rightParts = parseSemver(right);
+
+  if (!leftParts || !rightParts) {
+    return null;
+  }
+
+  for (let index = 0; index < 3; index += 1) {
+    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
+
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+
+  return 0;
+};
+
+const classifySemverChange = (
+  currentVersion: string,
+  nextVersion: string
+): "same" | "major" | "minor" | "patch" | "unknown" => {
+  const current = parseSemver(currentVersion);
+  const next = parseSemver(nextVersion);
+
+  if (!current || !next) {
+    return "unknown";
+  }
+
+  if (next[0] !== current[0]) {
+    return "major";
+  }
+
+  if (next[1] !== current[1]) {
+    return "minor";
+  }
+
+  if (next[2] !== current[2]) {
+    return "patch";
+  }
+
+  return "same";
+};
+
+const stripVersionPrefix = (value: string): string => value.replace(/^[~^=<>\s]*/, "").trim();
+
+const readFileSpecifierVersion = (specifier: string, cwd: string): string | undefined => {
+  const trimmed = specifier.trim();
+
+  if (!trimmed.startsWith("file:")) {
+    return undefined;
+  }
+
+  const rawTarget = trimmed.slice("file:".length).trim();
+  if (!rawTarget) {
+    return undefined;
+  }
+
+  const targetPath = path.isAbsolute(rawTarget) ? rawTarget : path.resolve(cwd, rawTarget);
+  const packageJson = readPackageJson(path.join(targetPath, "package.json"));
+
+  if (!packageJson) {
+    return undefined;
+  }
+
+  return typeof packageJson.version === "string" ? packageJson.version : undefined;
+};
+
+const readPackageJson = (filePath: string): Record<string, unknown> | undefined => {
+  if (!fs.existsSync(filePath)) {
+    return undefined;
+  }
+
+  const raw = fs.readFileSync(filePath, "utf8");
+  if (!raw.trim()) {
+    return undefined;
+  }
+
+  return JSON.parse(raw) as Record<string, unknown>;
+};
+
+const writePackageJson = (filePath: string, value: Record<string, unknown>): void => {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+};
+
+const findSculptorDependencyVersions = (
+  packageJson: Record<string, unknown>,
+  cwd: string
+): Array<{ name: string; version: string; source: "dependencies" | "devDependencies" | "peerDependencies" | "optionalDependencies" }> => {
+  const sources: Array<"dependencies" | "devDependencies" | "peerDependencies" | "optionalDependencies"> = [
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies"
+  ];
+  const result: Array<{ name: string; version: string; source: "dependencies" | "devDependencies" | "peerDependencies" | "optionalDependencies" }> = [];
+
+  for (const source of sources) {
+    const section = packageJson[source];
+
+    if (!section || typeof section !== "object" || Array.isArray(section)) {
+      continue;
+    }
+
+    for (const [name, rawVersion] of Object.entries(section as Record<string, unknown>)) {
+      if (!name.startsWith("@sculptor/") || typeof rawVersion !== "string") {
+        continue;
+      }
+
+      const fileVersion = readFileSpecifierVersion(rawVersion, cwd);
+
+      result.push({
+        name,
+        version: fileVersion ?? stripVersionPrefix(rawVersion),
+        source
+      });
+    }
+  }
+
+  return result;
+};
+
+const applySculptorVersionUpdate = (
+  packageJson: Record<string, unknown>,
+  nextVersions: Map<string, string>
+): Record<string, unknown> => {
+  const updated: Record<string, unknown> = {
+    ...packageJson
+  };
+
+  for (const source of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const) {
+    const section = updated[source];
+
+    if (!section || typeof section !== "object" || Array.isArray(section)) {
+      continue;
+    }
+
+    const nextSection = { ...(section as Record<string, unknown>) };
+
+    for (const name of Object.keys(nextSection)) {
+      const nextVersion = nextVersions.get(name);
+
+      if (!name.startsWith("@sculptor/") || !nextVersion) {
+        continue;
+      }
+
+      nextSection[name] = `^${nextVersion}`;
+    }
+
+    updated[source] = nextSection;
+  }
+
+  return updated;
+};
+
+const captureSpawnOutput = (
+  command: string,
+  args: string[],
+  cwd: string,
+  spawn: typeof spawnSync,
+  env?: NodeJS.ProcessEnv
+): string => {
+  const result = spawn(command, args, {
+    cwd,
+    stdio: "pipe",
+    encoding: "utf8",
+    shell: process.platform === "win32",
+    env: {
+      ...process.env,
+      ...env
+    }
+  });
+
+  if (result.status && result.status !== 0) {
+    throw new Error(`Failed to run ${command} ${args.join(" ")}.`);
+  }
+
+  const stdout = typeof result.stdout === "string" ? result.stdout : Buffer.from(result.stdout ?? "").toString("utf8");
+  return stdout.trim();
+};
 
 const isRegistryManagedGeneratedFile = (filePath: string): boolean => {
   const normalized = filePath.replace(/\\/g, "/");
@@ -398,8 +654,7 @@ const promptChoice = async (
 };
 
 const printMainHelp = (log: (...args: unknown[]) => void): void => {
-  log(`${buildBanner("SculptorTS CLI", `v${versionLabel}`)}
-
+  const help = `
 # SculptorTS CLI
 
 ## Usage
@@ -432,6 +687,7 @@ sc <command> [options]
 - \`sc add <plugin>\`
 - \`sc agents\`
 - \`sc agents refresh\`
+- \`sc report\`
 - \`sc help\`
   - \`sc help generate\`
   - \`sc help controller\`
@@ -443,6 +699,16 @@ sc <command> [options]
   - \`sc help list\`
   - \`sc --version\` / \`sc -v\`
   - \`sc version\`
+
+## Links
+
+- GitHub Wiki: https://github.com/imprakhartripathi/Sculptor/wiki
+- npm: https://www.npmjs.com/org/sculptor
+- Guide: https://imprakhartripathi.in/Sculptor/guide
+
+## Report
+
+- \`sc report\` prints support links and contact details
 
 ## Generators
 
@@ -460,7 +726,9 @@ sc <command> [options]
 ## Binary Alias
 
 - \`sculptor\` is equivalent to \`sc\`
-`);
+`;
+
+  log(`${buildBanner("SculptorTS CLI", `v${versionLabel}`)}\n${formatHelpMarkdown(help)}`);
 };
 
 const printHelp = (topic: string | undefined, log: (...args: unknown[]) => void): void => {
@@ -470,112 +738,129 @@ const printHelp = (topic: string | undefined, log: (...args: unknown[]) => void)
   }
 
   if (topic === "generate") {
-    log(generateHelp);
+    log(formatHelpMarkdown(generateHelp));
     return;
   }
 
   if (topic === "controller") {
-    log(controllerHelp);
+    log(formatHelpMarkdown(controllerHelp));
     return;
   }
 
   if (topic === "module") {
-    log(moduleHelp);
+    log(formatHelpMarkdown(moduleHelp));
     return;
   }
 
   if (topic === "middleware") {
-    log(middlewareHelp);
+    log(formatHelpMarkdown(middlewareHelp));
     return;
   }
 
   if (topic === "repository") {
-    log(repositoryHelp);
+    log(formatHelpMarkdown(repositoryHelp));
     return;
   }
 
   if (topic === "dto") {
-    log(dtoHelp);
+    log(formatHelpMarkdown(dtoHelp));
     return;
   }
 
   if (topic === "type") {
-    log(typeHelp);
+    log(formatHelpMarkdown(typeHelp));
     return;
   }
 
   if (topic === "route") {
-    log(routeHelp);
+    log(formatHelpMarkdown(routeHelp));
     return;
   }
 
   if (topic === "config") {
-    log(`# Config\n\nUse \`sc config get\`, \`sc config set\`, or \`sc config list\`.`);
+    log(formatHelpMarkdown(`# Config\n\nUse \`sc config get\`, \`sc config set\`, or \`sc config list\`.`));
     return;
   }
 
   if (topic === "sync") {
-    log(`# Sync\n\nUse \`sc sync\` to refresh \`sculptor.packages.json\`.`);
+    log(formatHelpMarkdown(`# Sync\n\nUse \`sc sync\` to refresh \`sculptor.packages.json\`.`));
     return;
   }
 
   if (topic === "pkg") {
-    log(`# Package\n\nUse \`sc pkg <name>\`, \`sc package <name>\`, \`sc pkg ls\`, or \`sc pkg rm <name>\`.\nPackage names are exact and are not normalized.`);
+    log(formatHelpMarkdown(`# Package\n\nUse \`sc pkg <name>\`, \`sc package <name>\`, \`sc pkg ls\`, or \`sc pkg rm <name>\`.\nPackage names are exact and are not normalized.`));
     return;
   }
 
   if (topic === "package") {
-    log(`# Package\n\nUse \`sc pkg <name>\`, \`sc package <name>\`, \`sc pkg ls\`, or \`sc pkg rm <name>\`.\nPackage names are exact and are not normalized.`);
+    log(formatHelpMarkdown(`# Package\n\nUse \`sc pkg <name>\`, \`sc package <name>\`, \`sc pkg ls\`, or \`sc pkg rm <name>\`.\nPackage names are exact and are not normalized.`));
     return;
   }
 
   if (topic === "ls") {
-    log(`# List\n\nUse \`sc ls\` or \`sc list\`, and \`sc ls -t\` for tree view.`);
+    log(formatHelpMarkdown(`# List\n\nUse \`sc ls\` or \`sc list\`, and \`sc ls -t\` for tree view.`));
     return;
   }
 
   if (topic === "list") {
-    log(`# List\n\nUse \`sc ls\` or \`sc list\`, and \`sc ls -t\` for tree view.`);
+    log(formatHelpMarkdown(`# List\n\nUse \`sc ls\` or \`sc list\`, and \`sc ls -t\` for tree view.`));
     return;
   }
 
   if (topic === "reg" || topic === "register" || topic === "r") {
-    log(`# Register\n\nUse \`sc reg <file>\`, \`sc register <file>\`, or \`sc r <file>\``);
+    log(formatHelpMarkdown(`# Register\n\nUse \`sc reg <file>\`, \`sc register <file>\`, or \`sc r <file>\``));
     return;
   }
 
   if (topic === "ureg" || topic === "unreg" || topic === "unregister" || topic === "ur") {
-    log(`# Unregister\n\nUse \`sc ureg <file>\`, \`sc unreg <file>\`, \`sc unregister <file>\`, or \`sc ur <file>\``);
+    log(formatHelpMarkdown(`# Unregister\n\nUse \`sc ureg <file>\`, \`sc unreg <file>\`, \`sc unregister <file>\`, or \`sc ur <file>\``));
     return;
   }
 
   if (topic === "rm" || topic === "remove") {
-    log(`# Remove\n\nUse \`sc rm <file>\` or \`sc remove <file>\``);
+    log(formatHelpMarkdown(`# Remove\n\nUse \`sc rm <file>\` or \`sc remove <file>\``));
     return;
   }
 
   if (topic === "install") {
-    log(`# Install\n\nUsage: \`sc install deps\` or \`sc i deps\``);
+    log(formatHelpMarkdown(`# Install\n\nUsage: \`sc install deps\` or \`sc i deps\``));
     return;
   }
 
   if (topic === "update") {
-    log(`# Update\n\nUsage: \`sc update\`\n\nUpdates the globally installed Sculptor CLI package.`);
+    log(formatHelpMarkdown(`# Update\n\nUsage:\n\n- \`sc update\` to refresh the globally installed Sculptor CLI package\n- \`sc update project\` to upgrade the current Sculptor project dependencies`));
     return;
   }
 
   if (topic === "doctor") {
-    log(`# Doctor\n\nUsage: \`sc doctor\`\n\nRuns diagnostics for the current Sculptor project and package registry.`);
+    log(formatHelpMarkdown(`# Doctor\n\nUsage: \`sc doctor\`\n\nRuns diagnostics for the current Sculptor project and package registry.`));
     return;
   }
 
   if (topic === "add") {
-    log(`# Add\n\nUsage: \`sc add <plugin>\``);
+    log(formatHelpMarkdown(`# Add\n\nUsage: \`sc add <plugin>\``));
     return;
   }
 
   if (topic === "agents") {
-    log(`# Agents\n\nUsage: \`sc agents\` or \`sc agents refresh\`\n\nWrites \`AGENTS.md\` in the current directory.`);
+    log(formatHelpMarkdown(`# Agents\n\nUsage: \`sc agents\` or \`sc agents refresh\`\n\nWrites \`AGENTS.md\` in the current directory.`));
+    return;
+  }
+
+  if (topic === "report") {
+    log([
+      buildBanner("SculptorTS CLI", `v${versionLabel}`),
+      "",
+      bold(cyan("Support")),
+      `  - ${link("GitHub Issues", "https://github.com/imprakhartripathi/Sculptor/issues")}`,
+      `  - ${link("Email", "dev@imprakhartripathi")}`,
+      `  - ${link("Learn More", "https://imprakhartripathi.in/Sculptor")}`,
+      "",
+      bold(yellow("Links")),
+      `  - ${link("GitHub Wiki", "https://github.com/imprakhartripathi/Sculptor/wiki")}`,
+      `  - ${link("npm", "https://www.npmjs.com/org/sculptor")}`,
+      `  - ${link("Guide", "https://imprakhartripathi.in/Sculptor/guide")}`
+    ].join("\n"));
     return;
   }
 
@@ -724,6 +1009,113 @@ const updateGlobalCliPackage = (
   );
 };
 
+const updateProjectPackageVersions = async (
+  args: string[],
+  cwd: string,
+  spawn: typeof spawnSync,
+  prompt: PromptFn,
+  log: (...args: unknown[]) => void,
+  error: (...args: unknown[]) => void
+): Promise<void> => {
+  const appRoot = findAppRoot(cwd);
+
+  if (!appRoot) {
+    const message = `sc update project can only be run from a Sculptor app root. Try ${formatSuggestion("sc update")} instead.`;
+    throw new Error(message);
+  }
+
+  const force = getFlagPresence(args, ["--force"]);
+  const packageJsonPath = path.join(appRoot, "package.json");
+  const packageJson = readPackageJson(packageJsonPath);
+
+  if (!packageJson) {
+    error("No package.json found for the current Sculptor project.");
+    throw new Error("No package.json found for the current Sculptor project.");
+  }
+
+  const sculptorDependencies = findSculptorDependencyVersions(packageJson, appRoot);
+
+  if (sculptorDependencies.length === 0) {
+    error("No Sculptor dependencies were found in package.json.");
+    throw new Error("No Sculptor dependencies were found in package.json.");
+  }
+
+  const dependencyUpdates: Array<{
+    name: string;
+    currentVersion: string;
+    latestVersion: string;
+    changeType: "same" | "major" | "minor" | "patch";
+  }> = [];
+
+  for (const dependency of sculptorDependencies) {
+    const latestVersion = captureSpawnOutput(
+      "npm",
+      ["view", dependency.name, "version", "--json"],
+      appRoot,
+      spawn
+    ).replace(/^"|"$/g, "").trim();
+    const changeType = classifySemverChange(dependency.version, latestVersion);
+
+    if (changeType === "unknown") {
+      error(`Unable to compare Sculptor versions: ${dependency.name} ${dependency.version} -> ${latestVersion}`);
+      throw new Error(
+        `Unable to compare Sculptor versions: ${dependency.name} ${dependency.version} -> ${latestVersion}`
+      );
+    }
+
+    dependencyUpdates.push({
+      name: dependency.name,
+      currentVersion: dependency.version,
+      latestVersion,
+      changeType
+    });
+  }
+
+  const changedUpdates = dependencyUpdates.filter((update) => update.changeType !== "same");
+
+  if (changedUpdates.length === 0) {
+    log("Project is already on the latest Sculptor package versions.");
+    return;
+  }
+
+  const hasMajorUpdate = changedUpdates.some((update) => update.changeType === "major");
+
+  log(
+    [
+      "Sculptor project update detected.",
+      ...changedUpdates.map(
+        (update) => `${update.name}: ${update.currentVersion} -> ${update.latestVersion}`
+      ),
+      "Major updates can break runtime. Update at your own risk."
+    ].join("\n")
+  );
+
+  if (hasMajorUpdate && !force) {
+    error(`Major updates require confirmation. Run "sc update project --force" to continue.`);
+    throw new Error(`Major updates require confirmation. Run "sc update project --force" to continue.`);
+  }
+
+  if (!hasMajorUpdate && !force) {
+    const answer = (await prompt("Proceed with the project update? (y/n)", "n")).trim().toLowerCase();
+
+    if (!answer.startsWith("y")) {
+      log("Project update cancelled.");
+      return;
+    }
+  }
+
+  const nextPackageJson = applySculptorVersionUpdate(
+    packageJson,
+    new Map(dependencyUpdates.map((update) => [update.name, update.latestVersion]))
+  );
+  writePackageJson(packageJsonPath, nextPackageJson);
+
+  const packageManager = detectPackageManager();
+  runSpawn(packageManager, ["install"], appRoot, spawn, log);
+
+  log("Updated Sculptor project packages to the latest published versions.");
+};
+
 const handleNew = async (
   args: string[],
   cwd: string,
@@ -780,12 +1172,23 @@ const handleInstall = (
 };
 
 const handleUpdate = (
+  args: string[],
   cwd: string,
+  prompt: PromptFn,
   spawn: typeof spawnSync,
   log: (...args: unknown[]) => void,
   error: (...args: unknown[]) => void
-): void => {
-  requireOutsideAppRoot(cwd, "sc update");
+): void | Promise<void> => {
+  if (args[0] === "project") {
+    return updateProjectPackageVersions(args.slice(1), cwd, spawn, prompt, log, error);
+  }
+
+  const appRoot = findAppRoot(cwd);
+
+  if (appRoot) {
+    const message = `sc update only updates the globally installed Sculptor CLI. Try ${formatSuggestion("sc update project")} instead.`;
+    throw new Error(message);
+  }
 
   try {
     updateGlobalCliPackage(cwd, spawn, log);
@@ -1220,10 +1623,13 @@ export const runCli = async (
       handleInstall(args, cwd, spawn, log, error);
       return;
     case "update":
-      handleUpdate(cwd, spawn, log, error);
+    await handleUpdate(args, cwd, prompt, spawn, log, error);
       return;
     case "doctor":
       handleDoctor(cwd, log, error);
+      return;
+    case "report":
+      printHelp("report", log);
       return;
     case "config":
       handleConfig(args, cwd, log, error);

@@ -1,4 +1,3 @@
-import express from "express";
 import type { Server } from "node:http";
 import type { RequestHandler } from "express";
 
@@ -7,7 +6,7 @@ import { createRuntimeContainer, flattenRegistry, validateRuntimePackages } from
 import { paws } from "@sculptor/paws";
 import { createRouter } from "@sculptor/router";
 
-import { requestContextMiddleware } from "./context.js";
+import { createApp } from "./app.js";
 import { createFrameworkErrorMiddleware, RuntimeError } from "./errors.js";
 import type {
   BootstrapAppOptions,
@@ -15,6 +14,7 @@ import type {
   StartAppBootstrapOptions,
   StartAppOptions
 } from "./types.js";
+import { resolveRootDir } from "./root.js";
 import { logRegistryState } from "./warnings.js";
 
 const resolvePort = (port: number | undefined, envPort: string | undefined, fallback: unknown): number => {
@@ -51,29 +51,23 @@ const wrapRequestHandler = (handler: RequestHandler): RequestHandler => (req, re
   }
 };
 
-const createApp = (): express.Express => {
-  const app = express();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use(requestContextMiddleware());
-  return app;
-};
-
 const bootstrap = ({
   registry: appRegistry,
-  rootDir = process.cwd(),
+  rootDir,
+  app: appBuilder,
   port,
   listen = true,
   onError
 }: BootstrapAppOptions): {
-  app: express.Express;
-  router: express.Router;
+  app: ReturnType<typeof createApp>["instance"];
+  router: ReturnType<typeof createRouter>;
   resolvedPort: number;
   rootDir: string;
   listen: boolean;
   server?: Server;
 } => {
-  const loadedConfig = loadConfig(rootDir);
+  const resolvedRootDir = resolveRootDir(rootDir);
+  const loadedConfig = loadConfig(resolvedRootDir);
   const resolvedPort = resolvePort(
     port,
     process.env.PORT,
@@ -88,9 +82,9 @@ const bootstrap = ({
   }
 
   validateRuntimePackages(appRegistry);
-  logRegistryState(rootDir, appRegistry);
+  logRegistryState(resolvedRootDir, appRegistry);
 
-  const app = createApp();
+  const app = appBuilder?.instance ?? createApp().instance;
   const container = createRuntimeContainer(appRegistry);
   const dependencyIssues = container.validate();
 
@@ -126,7 +120,7 @@ const bootstrap = ({
     app,
     router,
     resolvedPort,
-    rootDir,
+    rootDir: resolvedRootDir,
     listen
   };
 };

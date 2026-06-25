@@ -30,6 +30,7 @@ export declare const routeHandlerFileName: (name: string) => string;
 export declare const typeFileName: (name: string, variant: TypeVariant) => string;
 export declare const specFileName: (name: string, suffix: string) => string;
 export declare const toRoutePath: (value: string) => string;
+export declare const isVersionAtLeast: (value: string, minimum: string) => boolean;
 export declare const specImportPath: (sourcePath: string) => string;
 export declare const resolveGeneratorOutputDir: (kind: GenerateKind, outputDir?: string, name?: string) => string;
 export declare const devScriptFor: (devServer: DevServer) => string;
