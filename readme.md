@@ -17,7 +17,7 @@
 
 SculptorTS is a TypeScript-first, Express-based framework for building APIs with decorator controllers, functional routers, or both together.
 
-The `v1.1.0` release line introduces a package-aware architecture with a native Express builder that is:
+The `v1.1.4` release line introduces a package-aware architecture with a native Express builder that is:
 
 - explicit
 - registry-aware
@@ -43,36 +43,19 @@ If you are new to the framework, read this file first, then move into the packag
 
 ## Release Notes
 
-Current release line: `v1.1.0`
+Current release line: `v1.1.4`
 
-- `@sculptor/core` `1.0.2`
-- `@sculptor/router` `1.0.2`
-- `@sculptor/config` `1.0.2`
-- `@sculptor/paws` `1.0.2`
-- `@sculptor/template-registry` `1.0.2`
-- `@sculptor/cli` `1.0.2`
-- `@sculptor/di` `1.0.2`
+- `@sculptor/core` `1.1.4`
+- `@sculptor/router` `1.1.4`
+- `@sculptor/config` `1.1.4`
+- `@sculptor/paws` `1.1.4`
+- `@sculptor/template-registry` `1.1.4`
+- `@sculptor/cli` `1.1.4`
+- `@sculptor/di` `1.1.4`
 
-This line adds:
+View Full Release Notes in [ReleaseNotes.md](ReleaseNotes.md)
 
-- `@Package(...)` package indexes and functional package factories
-- `sculptor.packages.json` as a tracked framework artifact with ownership, registration, and helper tagging
-- explicit DI with `@Service()`, `@Repository()`, `@Middleware()`, and `@AutoInject()`
-- class, functional, and hybrid generation modes
-- package-aware generators and registry commands
-- exact package naming with no hidden singular/plural normalization
-- exact file resolution for `sc reg`, `sc ureg`, and `sc rm`
-- `sc reg pkg <name>` and `sc rm pkg <name>` for package registry management
-- safer generated marker blocks for package index updates
-- `sc doctor` for calm diagnostics
-- `sc agents` and `sc agents refresh` for `AGENTS.md`
-- `sc update` restricted to the globally installed `@sculptor/cli`
-- `sc update project` for per-package project upgrades
-- `sc report` for support links and issue reporting
-- clean CLI errors without raw stack traces
-- `req.ctx` as the default request context on Sculptor-bootstrapped apps
-
-This is the stable `v1.1.0` line. Future changes should stay additive and backwards-conscious.
+This is the stable `v1.1.4` line. Future changes should stay additive and backwards-conscious.
 
 Versions before `v1.0.0` are no longer actively maintained and will not receive future updates.
 
