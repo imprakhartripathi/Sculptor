@@ -67,6 +67,8 @@ This line adds:
 - `sc doctor` for calm diagnostics
 - `sc agents` and `sc agents refresh` for `AGENTS.md`
 - `sc update` restricted to the globally installed `@sculptor/cli`
+- `sc update project` for per-package project upgrades
+- `sc report` for support links and issue reporting
 - clean CLI errors without raw stack traces
 - `req.ctx` as the default request context on Sculptor-bootstrapped apps
 
@@ -276,8 +278,10 @@ Core command families:
 - `sc ureg` / `sc unreg` / `sc unregister` / `sc ur`
 - `sc rm` / `sc remove`
 - `sc doctor`
+- `sc help`
 - `sc update`
 - `sc update project`
+- `sc report`
 
 Useful generator flags:
 
@@ -448,6 +452,7 @@ You will find it here:
 | Run `sc agents refresh` | Regenerates `AGENTS.md` |
 | Run `sc update` outside an app | Updates the globally installed `@sculptor/cli` only |
 | Run `sc update project` inside an app | Checks the latest Sculptor version, warns, and upgrades project dependencies |
+| Run `sc report` | Prints support links and issue reporting details |
 | Run `sc doctor` inside or outside an app | Prints diagnostics and compatibility guidance |
 | Run `sc sync` | Validates and refreshes package registry metadata |
 | Run `sc ls` or `sc list` | Prints package and tree diagnostics |
@@ -525,6 +530,7 @@ The CLI has two groups of commands:
 - `sc doctor`
 - `sc update`
 - `sc update project`
+- `sc report`
 
 ### Allowed only inside a Sculptor app
 

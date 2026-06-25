@@ -15,6 +15,9 @@ Highlights:
 - native Express builder support through `createApp()`
 - automatic app root discovery through `findAppRoot()` and `resolveRootDir()`
 - `startApp({ app })` support alongside the legacy `startApp({ rootDir })` path
+- `sc update project` now upgrades each Sculptor package to its own latest version
+- `sc report` adds a dedicated support and issue-reporting command
+- `sc help` now renders as terminal-friendly help output with highlighted links
 - no migration required for `v1.0.x` apps
 - scaffolded `src/main.ts` now uses the builder startup style for new `v1.1.0` projects
 - legacy scaffold output is preserved for older version inputs

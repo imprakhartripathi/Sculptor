@@ -4,7 +4,6 @@ import path from "node:path";
 import { ensureDir, writeTextFile } from "../fs.js";
 import {
   normalizeRelativePath,
-  isVersionAtLeast,
   resolveFileStem,
   resolveGeneratorOutputDir,
   ScaffoldMode,
@@ -106,8 +105,7 @@ const collectSpecPaths = (dir: string, rootDir: string = dir): string[] => {
   return specs.sort();
 };
 
-const resolveMainStartupTemplate = (metadata: ScaffoldProjectMetadata): string =>
-  isVersionAtLeast(metadata.version, "1.1.0") ? mainTemplate : legacyMainTemplate;
+const resolveMainStartupTemplate = (_metadata: ScaffoldProjectMetadata): string => mainTemplate;
 
 export const syncTestHarness = (targetDir: string): void => {
   const testsDir = path.join(targetDir, "src", "tests");

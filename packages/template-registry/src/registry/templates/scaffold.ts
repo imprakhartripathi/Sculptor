@@ -275,12 +275,19 @@ const app = createApp();
  *
  * Configure native Express features.
  *
- * Examples:
+ * Example:
+ *
+ * import compression from "compression";
  *
  * app
  *   .use(compression())
  *   .disable("x-powered-by")
  *   .set("trust proxy", true);
+ *
+ * Install middleware packages before importing them:
+ *
+ * npm i compression
+ * npm i -D @types/compression
  *
  *
  * Warning

@@ -19,7 +19,7 @@ const linkDir = (source: string, destination: string): void => {
   fs.symlinkSync(source, destination, "junction");
 };
 
-const scaffoldFixture = async (version = "1.1.0"): Promise<{ cwd: string; projectRoot: string }> => {
+const scaffoldFixture = async (version = "0.1.0"): Promise<{ cwd: string; projectRoot: string }> => {
   const cwd = makeTempDir();
   const prompt = async (question: string, defaultValue?: string): Promise<string> => {
     if (question === "App name") return "fixture-app";
@@ -82,8 +82,12 @@ describe("scaffolded app", () => {
     const distMain = fs.readFileSync(path.join(projectRoot, "dist/main.js"), "utf8");
     const distRegistry = fs.readFileSync(path.join(projectRoot, "dist/registry.js"), "utf8");
 
-    expect(fs.readFileSync(path.join(projectRoot, "src/main.ts"), "utf8")).toContain("const app = createApp()");
-    expect(fs.readFileSync(path.join(projectRoot, "src/main.ts"), "utf8")).toContain("void startApp({");
+    const srcMain = fs.readFileSync(path.join(projectRoot, "src/main.ts"), "utf8");
+
+    expect(srcMain).toContain("const app = createApp()");
+    expect(srcMain).toContain("void startApp({");
+    expect(srcMain).toContain('import compression from "compression";');
+    expect(srcMain).toContain("npm i compression");
     expect(distMain).toContain("createApp()");
     expect(distRegistry).toContain("HealthPackage");
     expect(distRegistry).toContain("packages: [HealthPackage]");
@@ -149,14 +153,14 @@ describe("scaffolded app", () => {
     expect(sculptor.testing).toEqual({ generate: true, framework: "vitest" });
   });
 
-  it("keeps the legacy startup template for v1.0.x scaffolds", async () => {
+  it("uses the builder startup template even when the app version is older", async () => {
     const { projectRoot } = await scaffoldFixture("1.0.0");
 
     expect(fs.readFileSync(path.join(projectRoot, "src/main.ts"), "utf8")).toContain(
-      "process.env.SCULPTOR_ROOT_DIR = appRoot;"
+      "const app = createApp()"
     );
     expect(fs.readFileSync(path.join(projectRoot, "src/main.ts"), "utf8")).toContain(
-      "void startApp({ registry, rootDir: appRoot });"
+      "void startApp({"
     );
   });
 });

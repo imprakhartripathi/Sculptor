@@ -1,11 +1,15 @@
 import express from "express";
+import type { PathParams, RequestHandlerParams } from "express-serve-static-core";
 
 import { requestContextMiddleware } from "./context.js";
 
 export interface SculptorExpressBuilder {
   readonly instance: express.Express;
   getInstance(): express.Express;
-  use(...args: Parameters<express.Express["use"]>): SculptorExpressBuilder;
+  use(): SculptorExpressBuilder;
+  use(...handlers: RequestHandlerParams[]): SculptorExpressBuilder;
+  use(path: PathParams, ...handlers: RequestHandlerParams[]): SculptorExpressBuilder;
+  use(path: PathParams, subApplication: express.Application): SculptorExpressBuilder;
   set(...args: Parameters<express.Express["set"]>): SculptorExpressBuilder;
   enable(setting: string): SculptorExpressBuilder;
   disable(setting: string): SculptorExpressBuilder;
@@ -26,8 +30,8 @@ class SculptorExpressBuilderImpl implements SculptorExpressBuilder {
     return this.app;
   }
 
-  use(...args: Parameters<express.Express["use"]>): SculptorExpressBuilder {
-    this.app.use(...(args as any[]));
+  use(...args: unknown[]): SculptorExpressBuilder {
+    this.app.use(...(args as never[]));
     return this;
   }
 

@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ensureDir, writeTextFile } from "../fs.js";
-import { normalizeRelativePath, isVersionAtLeast, resolveFileStem, resolveGeneratorOutputDir } from "./utils.js";
-import { eslintConfigTemplate, healthControllerTemplate, healthControllerSpecTemplate, healthDtoTemplate, healthPackageIndexTemplate, healthFunctionalRepositoryTemplate, healthFunctionalRouteHandlerTemplate, healthFunctionalRouteTemplate, healthFunctionalServiceTemplate, healthRepositoryTemplate, healthRouteSpecTemplate, healthRouteTemplate, healthRouteHandlerTemplate, healthServiceTemplate, healthTypesTemplate, mainSpecTemplate, legacyMainTemplate, mainTemplate, rootGitignoreTemplate, propsTemplate, registryTemplate, rootPackageJsonTemplate, rootReadmeTemplate, rootTsconfigTemplate, sculptorTemplate, testHarnessSpecTemplate, testRegistryTemplate, testRunnerTemplate, vitestConfigTemplate } from "./templates/scaffold.js";
+import { normalizeRelativePath, resolveFileStem, resolveGeneratorOutputDir } from "./utils.js";
+import { eslintConfigTemplate, healthControllerTemplate, healthControllerSpecTemplate, healthDtoTemplate, healthPackageIndexTemplate, healthFunctionalRepositoryTemplate, healthFunctionalRouteHandlerTemplate, healthFunctionalRouteTemplate, healthFunctionalServiceTemplate, healthRepositoryTemplate, healthRouteSpecTemplate, healthRouteTemplate, healthRouteHandlerTemplate, healthServiceTemplate, healthTypesTemplate, mainSpecTemplate, mainTemplate, rootGitignoreTemplate, propsTemplate, registryTemplate, rootPackageJsonTemplate, rootReadmeTemplate, rootTsconfigTemplate, sculptorTemplate, testHarnessSpecTemplate, testRegistryTemplate, testRunnerTemplate, vitestConfigTemplate } from "./templates/scaffold.js";
 import { controllerSpecTemplate, createDecoratorController, createPackageResource, createFunctionalArtifacts, createFunctionalRepositoryResource, createFunctionalServiceResource, createMiddlewareResource, createModuleResource, createRepositoryResource, createDtoResource, createRouteResource, createServiceResource, createTypeResource, middlewareSpecTemplate, routeSpecTemplate, serviceSpecTemplate } from "./templates/resources.js";
 import { controllerHelp, generateHelp, middlewareHelp, moduleHelp, routeHelp, typeHelp } from "./templates/help.js";
 export { controllerHelp, generateHelp, middlewareHelp, moduleHelp, routeHelp, typeHelp };
@@ -28,7 +28,7 @@ const collectSpecPaths = (dir, rootDir = dir) => {
     }
     return specs.sort();
 };
-const resolveMainStartupTemplate = (metadata) => isVersionAtLeast(metadata.version, "1.1.0") ? mainTemplate : legacyMainTemplate;
+const resolveMainStartupTemplate = (_metadata) => mainTemplate;
 export const syncTestHarness = (targetDir) => {
     const testsDir = path.join(targetDir, "src", "tests");
     ensureDir(testsDir);
