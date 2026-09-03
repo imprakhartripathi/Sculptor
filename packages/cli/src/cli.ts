@@ -526,7 +526,7 @@ const isRegistryManagedGeneratedFile = (filePath: string): boolean => {
     return false;
   }
 
-  return /\.(controller|service|repository|middleware|module|dto|route|type|types|interface|class|enum|codec|validator)\.ts$/.test(
+  return /\.(controller|service|repository|middleware|module|dto|route|type|types|interface|class|enum)\.ts$/.test(
     normalized
   );
 };
@@ -1425,7 +1425,7 @@ const handleGenerate = async (
   const [kindInput, ...restInput] = args;
 
   if (!kindInput) {
-    error("Usage: sc generate <controller|service|repository|dto|module|middleware|type|route|codec|validator|pkg> <name>");
+    error("Usage: sc generate <controller|service|repository|dto|module|middleware|type|route|pkg> <name>");
     process.exit(1);
   }
 
@@ -1447,8 +1447,6 @@ const handleGenerate = async (
     r: "route",
     route: "route",
     resource: "route",
-    codec: "codec",
-    validator: "validator",
     pkg: "pkg",
     package: "pkg"
   };

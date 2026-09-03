@@ -62,31 +62,6 @@ If you use `Use()` on a class, the middleware applies to all routes in that cont
 
 If you use `Use()` on a method, the middleware applies only to that route.
 
-## Request Parameter Injection
-
-Controller parameters can explicitly receive request values:
-
-```ts
-import { Controller, Get, ReqParam, ReqQuery } from "@sculptor/router";
-
-@Controller("/users")
-class UsersController {
-  @Get("/:id")
-  get(
-    @ReqParam("id", Number) id: number,
-    @ReqQuery("page", Number).optional() page?: number
-  ) {
-    return { id, page };
-  }
-}
-```
-
-Supported sources are `ReqParam`, `ReqQuery`, `ReqBody`, `ReqHeader`, `ReqCookie`, `ReqContext`, `ReqIp`, `Req`, `Res`, and `Next`. Sources that represent objects support whole-object injection when no key is supplied.
-
-Codecs run before fluent validators. Built-in runtime codec values include `Number`, `String`, `Boolean`, `Date`, and the exported `UUID` codec. Invalid codec input produces `CodecError`; failed validators produce `ValidationError`; missing required values produce `MissingParameterError`. These errors use HTTP 400 through the framework error pipeline.
-
-Parameters are required by default. Use `.optional()` to receive `undefined` for an absent value; its codec and validators are skipped.
-
 ### `FunctionalRouter(prefix)`
 
 Creates a Sculptor-native functional router scope.

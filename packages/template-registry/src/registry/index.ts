@@ -47,7 +47,6 @@ import {
 } from "./templates/scaffold.js";
 import {
   controllerSpecTemplate,
-  createCodecResource,
   createDecoratorController,
   createPackageResource,
   createFunctionalArtifacts,
@@ -60,7 +59,6 @@ import {
   createRouteResource,
   createServiceResource,
   createTypeResource,
-  createValidatorResource,
   middlewareSpecTemplate,
   routeSpecTemplate,
   serviceSpecTemplate
@@ -265,12 +263,6 @@ export const generateResourceFiles = (
       break;
     case "type":
       Object.assign(sourceFiles, createTypeResource(resolvedName, typeVariant, resolvedOutputDir));
-      break;
-    case "codec":
-      Object.assign(sourceFiles, createCodecResource(resolvedName, resolvedOutputDir));
-      break;
-    case "validator":
-      Object.assign(sourceFiles, createValidatorResource(resolvedName, resolvedOutputDir));
       break;
     case "route":
       Object.assign(sourceFiles, createRouteResource(resolvedName, resolvedOutputDir));

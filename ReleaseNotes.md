@@ -2,16 +2,6 @@
 
 ## Release Notes
 
-### v1.2-26.09
-
-This release adds:
-
-- explicit controller request parameter injection with centralized resolution
-- runtime codecs, validators, optional parameters, and typed input errors
-- route-parameter verification for keyed `@ReqParam()` declarations
-- package-aware and non-package codec and validator generation
-- preserved legacy controller invocation and existing core error compatibility
-
 Current release line: `v1.1.4`
 
 - `@sculptor/core` `1.1.4`

@@ -3,7 +3,6 @@ import "reflect-metadata";
 import type { RequestHandler } from "express";
 
 import { METADATA_KEYS } from "./metadata.js";
-import { getParameterDefinitions } from "./parameters.js";
 import type {
   ControllerClass,
   ControllerMetadata,
@@ -54,7 +53,6 @@ const toRouteDefinitions = (
     path: route.path,
     propertyKey: methodName,
     middlewares: [...methodMiddlewares],
-    parameters: getParameterDefinitions(prototype, methodName),
     source: {
       label: `${controllerName}.${methodName}()`
     }

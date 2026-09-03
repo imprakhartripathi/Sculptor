@@ -63,8 +63,6 @@ It handles:
 | `sc g t user -e` | Generates an enum type file |
 | `sc g t user -i` | Generates an interface type file |
 | `sc g t user -c` | Generates a class type file |
-| `sc g codec uuid` | Generates a functional codec helper |
-| `sc g validator isPositive` | Generates a functional validator helper |
 | `sc v` / `sc --v` / `sc -v` | Prints version |
 | `sc help` | Prints help |
 | `sc report` | Prints support links and issue reporting details |

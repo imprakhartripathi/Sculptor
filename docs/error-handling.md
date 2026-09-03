@@ -85,11 +85,6 @@ Use these built-in error classes:
 - `SculptorError`
 - `HttpError`
 - `RuntimeError`
-- `CodecError`
-- `ValidationError`
-- `MissingParameterError`
-
-Request parameter errors expose `kind`, `code`, `message`, `reason`, and `statusCode`. The core boundary adapts `statusCode` to the existing `status` response field. Codec, validation, and missing-parameter failures are HTTP 400 errors and remain distinguishable through their codes and details.
 
 `HttpError` is the best option for client-facing status codes.
 
