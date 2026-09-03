@@ -7,6 +7,36 @@ import { registerControllerRoutes } from "./route-registry.js";
 import { scanController } from "./scanner.js";
 import type { ControllerClass, CreateRouterOptions, RouterSource } from "./types.js";
 
+const routeParameterNames = (path: string): Set<string> => {
+  const names = new Set<string>();
+  const pattern = /:([A-Za-z0-9_]+)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(path)) !== null) {
+    names.add(match[1] as string);
+  }
+
+  return names;
+};
+
+const verifyRouteParameters = (controllerMetadata: ReturnType<typeof scanController>): void => {
+  for (const route of controllerMetadata.routes) {
+    const available = routeParameterNames(route.path);
+
+    for (const parameter of route.parameters) {
+      if (parameter.source !== "params" || parameter.key === undefined) {
+        continue;
+      }
+
+      if (!available.has(parameter.key)) {
+        throw new TypeError(
+          `Parameter "${parameter.key}" is not defined in route "${route.path}".`
+        );
+      }
+    }
+  }
+};
+
 const normalizePrefix = (prefix?: string): string | undefined => {
   if (!prefix) {
     return undefined;
@@ -27,6 +57,7 @@ export const createRouter = ({
   controllerFactory
 }: CreateRouterOptions): express.Router => {
   const scannedControllers = controllers.map((controllerClass) => scanController(controllerClass));
+  scannedControllers.forEach(verifyRouteParameters);
   const normalizedPrefix = normalizePrefix(prefix);
   detectRouteCollisions(scannedControllers, routes, normalizedPrefix ?? "");
 
