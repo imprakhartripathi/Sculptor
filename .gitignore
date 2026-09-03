@@ -1,5 +1,9 @@
 node_modules/
-dist/
+**/dist/
+build/
+out/
+tmp/
+temp/
 coverage/
 .env
 .env.*
@@ -14,6 +18,12 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.tsbuildinfo
+*.tgz
+*.pid
+.eslintcache
+.swp
+.swo
 .codex
 test-smoke/
 publish.md
+.agents
