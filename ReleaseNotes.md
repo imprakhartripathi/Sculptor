@@ -2,7 +2,7 @@
 
 ## Release Notes
 
-### v1.2.0 (v1.2-26.09)
+### v1.2.0 (v1.2-26.11)
 
 This release adds:
 

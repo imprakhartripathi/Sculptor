@@ -28,7 +28,7 @@ The `v1.1.4` release introduced the package-aware architecture and native Expres
 - Express-native
 - backwards-compatible with `v1.0.x`
 
-The current `v1.2.0` release (feature line `v1.2-26.09`) adds explicit, parameter-local request injection for class-based controllers. See the [router documentation](packages/router/README.md) for request decorators, codecs, validators, and optional parameters.
+The current `v1.2.0` release (feature line `v1.2-26.11`) adds explicit, parameter-local request injection for class-based controllers. See the [router documentation](packages/router/README.md) for request decorators, codecs, validators, and optional parameters.
 
 The framework is split into focused packages:
 
