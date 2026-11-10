@@ -116,6 +116,8 @@ sc generate repository user
 sc generate dto user
 sc generate type user
 sc generate route user
+sc generate codec uuid
+sc generate validator isPositive
 sc generate pkg user
 sc generate package user
 \`\`\`
@@ -131,6 +133,8 @@ sc generate package user
 - \`dto\` -> \`dto\`
 - \`type\` -> \`t\`
 - \`route\` -> \`r\`
+- \`codec\` -> \`codec\`
+- \`validator\` -> \`validator\`
 - \`pkg\` -> \`pkg\`
 - \`package\` -> \`package\`
 
@@ -138,6 +142,8 @@ sc generate package user
 
 - append \`in <path>\` to write into a custom directory
 - default output for types is \`src/app/types\`
+- default output for codecs is project-root \`codec\`
+- default output for validators is project-root \`validator\`
 - default output for repositories is \`src/app/repositories\`
 - default output for DTOs is \`src/app/dtos\`
 - package generation uses the configured \`project.srcRoot\` unless \`in\` is provided

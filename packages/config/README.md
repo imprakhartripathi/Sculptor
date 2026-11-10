@@ -6,9 +6,9 @@ The SculptorTS config package loads framework and runtime config from the app ro
 
 ## Version Notes
 
-This package is part of the `v1.0.2` release line. The docs below describe the merged config behavior used by the current runtime and CLI.
+This package is part of the `v1.2.0` release line. The docs below describe the merged config behavior used by the current runtime and CLI.
 
-Current package version: `1.0.2`
+Current package version: `1.2.0`
 
 Future changes should stay additive and backwards-conscious.
 

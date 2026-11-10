@@ -6,8 +6,8 @@ The SculptorTS core package boots the HTTP server and exposes the primary framew
 
 ## Version Policy
 
-- Release line: `v1.1.0`
-- This release line adds a native Express builder, automatic app root discovery, and builder-aware startup while keeping the `v1.0.x` path intact.
+- Release line: `v1.2.0`
+- This release line adds parameter-local controller request injection while preserving existing runtime and error behavior.
 - Future changes should stay additive and backwards-conscious.
 
 ## What This Package Does

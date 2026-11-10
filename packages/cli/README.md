@@ -23,8 +23,8 @@ It handles:
 
 ## Version Policy
 
-- Release line: `v1.1.0`
-- This release line keeps package-aware generation, functional package scaffolds, `sc doctor`, `sc agents`, `sculptor.packages.json`, and exact package/file alias commands while updating new app scaffolds to the Express builder startup template.
+- Release line: `v1.2.0`
+- This release line adds request codec and validator generation while retaining package-aware generation, functional package scaffolds, diagnostics, registry commands, and existing scaffold behavior.
 - Future changes should stay additive and backwards-conscious.
 
 ## Quick Command Sheet
@@ -63,9 +63,13 @@ It handles:
 | `sc g t user -e` | Generates an enum type file |
 | `sc g t user -i` | Generates an interface type file |
 | `sc g t user -c` | Generates a class type file |
+| `sc g codec uuid` | Generates a functional codec helper |
+| `sc g validator isPositive` | Generates a functional validator helper |
 | `sc v` / `sc --v` / `sc -v` | Prints version |
 | `sc help` | Prints help |
 | `sc report` | Prints support links and issue reporting details |
+
+Codec and validator helpers are written directly to the detected package root when a package target is supplied. Outside a package, they are written under project-root `codec/` and `validator/` directories, which are created when needed.
 
 ## Entry Points
 

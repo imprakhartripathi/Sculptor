@@ -1,6 +1,6 @@
 # Framework Lifecycle
 
-This document describes the runtime lifecycle used by SculptorTS apps in the current `v1.0.2` release line.
+This document describes the runtime lifecycle used by SculptorTS apps in the current `v1.2.0` release line.
 
 ## Application Startup
 
@@ -38,14 +38,17 @@ flowchart TD
     A[Incoming Request] --> B[requestContextMiddleware]
     B --> C[Middleware Chain]
     C --> D{Route Match}
-    D -->|Controller| E[Controller Method]
+    D -->|Controller| E[Parameter Resolution]
+    E --> I[Controller Method]
     D -->|Functional| F[Functional Route Handler]
-    E --> G[Return Value or Response]
+    I --> G[Return Value or Response]
     F --> G
     G --> H[Framework Error Middleware]
 ```
 
 The request context is attached to `req.ctx` before routes run.
+
+For decorated controller parameters, the router resolves request sources, optionality, codecs, and validators before method invocation. Decorators replace only their own argument indexes; undecorated indexes preserve the v1.1 `(req, res, next)` positions.
 
 ## Package Resolution
 

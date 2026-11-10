@@ -17,7 +17,7 @@
 
 SculptorTS is a TypeScript-first, Express-based framework for building APIs with decorator controllers, functional routers, or both together.
 
-The `v1.1.4` release line introduces a package-aware architecture with a native Express builder that is:
+The `v1.1.4` release introduced the package-aware architecture and native Express builder. The current `v1.2.0` release builds on that foundation and is:
 
 - explicit
 - registry-aware
@@ -27,6 +27,8 @@ The `v1.1.4` release line introduces a package-aware architecture with a native 
 - hybrid-friendly
 - Express-native
 - backwards-compatible with `v1.0.x`
+
+The current `v1.2.0` release (feature line `v1.2-26.09`) adds explicit, parameter-local request injection for class-based controllers. See the [router documentation](packages/router/README.md) for request decorators, codecs, validators, and optional parameters.
 
 The framework is split into focused packages:
 
@@ -43,19 +45,19 @@ If you are new to the framework, read this file first, then move into the packag
 
 ## Release Notes
 
-Current release line: `v1.1.4`
+Current release line: `v1.2.0`
 
-- `@sculptor/core` `1.1.4`
-- `@sculptor/router` `1.1.4`
-- `@sculptor/config` `1.1.4`
-- `@sculptor/paws` `1.1.4`
-- `@sculptor/template-registry` `1.1.4`
-- `@sculptor/cli` `1.1.4`
-- `@sculptor/di` `1.1.4`
+- `@sculptor/core` `1.2.0`
+- `@sculptor/router` `1.2.0`
+- `@sculptor/config` `1.2.0`
+- `@sculptor/paws` `1.2.0`
+- `@sculptor/template-registry` `1.2.0`
+- `@sculptor/cli` `1.2.0`
+- `@sculptor/di` `1.2.0`
 
 View Full Release Notes in [ReleaseNotes.md](ReleaseNotes.md)
 
-This is the stable `v1.1.4` line. Future changes should stay additive and backwards-conscious.
+This is the stable `v1.2.0` line. Future changes should stay additive and backwards-conscious.
 
 Versions before `v1.0.0` are no longer actively maintained and will not receive future updates.
 

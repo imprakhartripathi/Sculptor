@@ -1,6 +1,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 
 import { wrapRequestHandler } from "./async.js";
+import { resolveControllerArguments } from "./parameters.js";
 import type { ControllerMetadata, RouteDefinition } from "./types.js";
 
 type RouteHandler = (...args: unknown[]) => unknown;
@@ -51,7 +52,12 @@ const createRouteHandler = (
     };
 
     void Promise.resolve()
-      .then(() => (handler as RouteHandler).call(instance, req, res, next))
+      .then(() => {
+        const args = route.parameters.length > 0
+          ? resolveControllerArguments({ req, res, next }, route.parameters)
+          : [req, res, next];
+        return (handler as RouteHandler).call(instance, ...args);
+      })
       .then((result) => {
         if (result !== undefined && !res.headersSent) {
           res.json(result);

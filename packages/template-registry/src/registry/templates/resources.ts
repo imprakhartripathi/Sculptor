@@ -11,7 +11,9 @@ import {
   moduleFileName,
   middlewareFileName,
   controllerFileName,
+  codecFileName,
   typeFileName,
+  validatorFileName,
   specImportPath,
   toRoutePath
 } from "../utils.js";
@@ -277,6 +279,20 @@ export const createTypeResource = (
 `
   };
 };
+
+export const createCodecResource = (name: string, outputDir: string): Record<string, string> => ({
+  [`${normalizeRelativePath(outputDir)}/${codecFileName(name)}`]: `import type { Codec } from "@sculptor/router";
+
+export const ${toCamelCase(name)}Codec: Codec<unknown> = (value) => value;
+`
+});
+
+export const createValidatorResource = (name: string, outputDir: string): Record<string, string> => ({
+  [`${normalizeRelativePath(outputDir)}/${validatorFileName(name)}`]: `import type { Validator } from "@sculptor/router";
+
+export const ${toCamelCase(name)}Validator: Validator<unknown> = (_value) => undefined;
+`
+});
 
 export const createPackageResource = (
   name: string,

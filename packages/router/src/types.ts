@@ -26,9 +26,12 @@ export interface MethodRouteMetadata {
   path: string;
 }
 
+export type { Codec, ParameterDefinition, ParameterSource, Validator } from "./parameters.js";
+
 export interface RouteDefinition extends MethodRouteMetadata {
   propertyKey: string;
   middlewares: RequestHandler[];
+  parameters: import("./parameters.js").ParameterDefinition[];
   source?: {
     label: string;
   };

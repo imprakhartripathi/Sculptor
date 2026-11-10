@@ -2,9 +2,22 @@
 
 This changelog documents the current Sculptor release line and the historical ranges that remain relevant for compatibility and support conversations.
 
-All versions before `v1.0.0` are deprecated. Only the current `v1.1.4` release line is supported for active development and fixes.
+All versions before `v1.0.0` are deprecated. The current release line is `v1.2.0`.
 
 Versions before `v1.0.0` are no longer actively maintained and will not receive future updates.
+
+## v1.2.0
+
+The `v1.2.0` release adds explicit parameter-local request injection for class-based controllers while preserving the v1.1 `(req, res, next)` positions for undecorated parameters.
+
+Highlights:
+
+- request parameter decorators with centralized argument resolution
+- runtime codecs, validators, optional parameters, and structured HTTP 400 input errors
+- route-parameter verification across controller prefixes and method paths
+- codec and validator CLI generators with package-aware destinations
+- `@Request()` and `@Response()` decorators while preserving `Req` and `Res` type aliases
+- documentation and tests for parameter injection, compatibility, and generators
 
 ## v1.1.4
 
@@ -28,7 +41,7 @@ Highlights:
 
 This remains an additive release line, so existing apps continue to boot without changes.
 
-The `v1.1.0` through `v1.1.3` release line is deprecated in favor of `v1.1.4`. `v1.1.4` is the intended stable release line to use.
+The `v1.1.0` through `v1.1.3` releases were superseded by `v1.1.4`; all v1.1 releases are now historical and v1.2.0 is current.
 
 ## v1.1.0
 

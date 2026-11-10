@@ -43,6 +43,8 @@ export class UsersController {
 }
 ```
 
+Controller method decorators resolve only their own parameter. You may use multiple decorated parameters; undecorated positions retain the legacy `(req, res, next)` invocation positions and are not application-value injection points.
+
 Tradeoffs:
 
 - more structure

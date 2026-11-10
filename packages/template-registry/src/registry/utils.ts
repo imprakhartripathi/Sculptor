@@ -13,6 +13,8 @@ export type GenerateKind =
   | "middleware"
   | "type"
   | "route"
+  | "codec"
+  | "validator"
   | "pkg";
 export type TypeVariant = "type" | "interface" | "class" | "enum";
 export type TestingFramework = "vitest";
@@ -74,6 +76,9 @@ export const typeFileName = (name: string, variant: TypeVariant): string => {
   const suffix = variant === "type" ? "type" : variant;
   return `${name}.${suffix}.ts`;
 };
+
+export const codecFileName = (name: string): string => `${name}.codec.ts`;
+export const validatorFileName = (name: string): string => `${name}.validator.ts`;
 
 export const specFileName = (name: string, suffix: string): string => `${name}.${suffix}.spec.ts`;
 
@@ -156,6 +161,10 @@ export const resolveGeneratorOutputDir = (
       return "src/app/types";
     case "route":
       return "src/app/routes";
+    case "codec":
+      return "codec";
+    case "validator":
+      return "validator";
   }
 };
 

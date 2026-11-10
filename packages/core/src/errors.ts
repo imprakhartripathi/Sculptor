@@ -1,5 +1,11 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response } from "express";
 
+import {
+  CodecError,
+  MissingParameterError,
+  ValidationError
+} from "@sculptor/router";
+
 import type { FrameworkErrorContext, FrameworkErrorHook } from "./types.js";
 
 export interface SculptorErrorOptions {
@@ -50,6 +56,19 @@ export const normalizeError = (error: unknown): SculptorError => {
 
   if (error instanceof HttpError) {
     return error;
+  }
+
+  if (error instanceof CodecError || error instanceof ValidationError || error instanceof MissingParameterError) {
+    return new SculptorError(error.message, {
+      code: error.code,
+      status: error.statusCode,
+      details: {
+        kind: error.kind,
+        reason: error.reason,
+        statusCode: error.statusCode
+      },
+      cause: error
+    });
   }
 
   if (error instanceof Error) {
