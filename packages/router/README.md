@@ -6,9 +6,9 @@ The SculptorTS router package provides decorators and router assembly for contro
 
 ## Version Policy
 
-- Release line: `v1.0.2`
-- Current package version: `1.0.2`
-- The router package keeps the controller, hybrid, and functional routing contract stable in the package-aware runtime line.
+- Release line: `v1.2.0`
+- Current package version: `1.2.0`
+- This release adds parameter-local controller request injection, codecs, validators, and prefix-aware route parameter checks while keeping controller, hybrid, and functional routing additive.
 - Future changes should stay additive and backwards-conscious.
 
 ## What This Package Does
@@ -81,11 +81,31 @@ class UsersController {
 }
 ```
 
-Supported sources are `ReqParam`, `ReqQuery`, `ReqBody`, `ReqHeader`, `ReqCookie`, `ReqContext`, `ReqIp`, `Req`, `Res`, and `Next`. Sources that represent objects support whole-object injection when no key is supplied.
+Supported sources are `ReqParam`, `ReqQuery`, `ReqBody`, `ReqHeader`, `ReqCookie`, `ReqContext`, `ReqIp`, `Request`, `Response`, and `Next`. Sources that represent objects support whole-object injection when no key is supplied.
 
-Codecs run before fluent validators. Built-in runtime codec values include `Number`, `String`, `Boolean`, `Date`, and the exported `UUID` codec. Invalid codec input produces `CodecError`; failed validators produce `ValidationError`; missing required values produce `MissingParameterError`. These errors use HTTP 400 through the framework error pipeline.
+Use `@Request()` and `@Response()` to inject the Express request and response. `Req` and `Res` remain the request and response type aliases.
+
+Codecs run before fluent validators. Use the standard JavaScript `Number`, `String`, `Boolean`, and `Date` constructors as codecs, or the router's exported `UUID` codec. `Boolean` accepts only `true`, `false`, `"true"`, and `"false"`; it does not use JavaScript truthiness. Invalid codec input produces `CodecError`; failed validators produce `ValidationError`; missing required values produce `MissingParameterError`. These errors use HTTP 400 through the framework error pipeline.
 
 Parameters are required by default. Use `.optional()` to receive `undefined` for an absent value; its codec and validators are skipped.
+
+### Mixing Decorated Parameters
+
+You can use any number of decorated parameters. Each decorator resolves only the parameter where it appears.
+
+```ts
+@Get("/:id")
+get(
+  @ReqParam("id") id: string,
+  response: Res,
+  next: Nxt,
+  @ReqQuery("page", Number) page: number
+) {
+  return { id, page };
+}
+```
+
+Undecorated parameters preserve the v1.1 controller invocation positions: index `0` receives the request, index `1` receives the response, index `2` receives `next`, and later undecorated indexes receive `undefined`. They do not receive arbitrary constants or application values; put those on the controller, inject them with DI, or pass them to a normal helper function.
 
 ### `FunctionalRouter(prefix)`
 

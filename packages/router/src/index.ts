@@ -12,7 +12,6 @@ export {
 } from "./errors.js";
 export {
   Next,
-  Req,
   ReqBody,
   ReqContext,
   ReqCookie,
@@ -20,7 +19,8 @@ export {
   ReqIp,
   ReqParam,
   ReqQuery,
-  Res,
+  Request,
+  Response,
   UUID
 } from "./parameters.js";
 export type {
@@ -32,6 +32,8 @@ export type {
   Nxt,
   MethodRouteMetadata,
   ParameterResolverContext,
+  Req,
+  Res,
   RouteDefinition,
   RouteRegistrationSource,
   RouterSource,

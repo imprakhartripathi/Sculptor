@@ -21,7 +21,8 @@ const routeParameterNames = (path: string): Set<string> => {
 
 const verifyRouteParameters = (controllerMetadata: ReturnType<typeof scanController>): void => {
   for (const route of controllerMetadata.routes) {
-    const available = routeParameterNames(route.path);
+    const routePattern = `${controllerMetadata.prefix}${route.path}`;
+    const available = routeParameterNames(routePattern);
 
     for (const parameter of route.parameters) {
       if (parameter.source !== "params" || parameter.key === undefined) {
@@ -30,7 +31,7 @@ const verifyRouteParameters = (controllerMetadata: ReturnType<typeof scanControl
 
       if (!available.has(parameter.key)) {
         throw new TypeError(
-          `Parameter "${parameter.key}" is not defined in route "${route.path}".`
+          `Parameter "${parameter.key}" is not defined in route "${routePattern}".`
         );
       }
     }

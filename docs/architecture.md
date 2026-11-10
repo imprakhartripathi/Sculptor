@@ -54,6 +54,8 @@ At runtime the framework:
 - registers middleware
 - mounts controllers and functional routers
 
+For class-based controller routes, parameter decorators contribute metadata that the router resolves into only their corresponding controller argument positions. The remaining arguments keep the legacy Express invocation positions.
+
 ## Modes
 
 Sculptor supports three modes in one framework:

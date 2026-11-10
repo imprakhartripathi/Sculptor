@@ -13,7 +13,6 @@ import {
   Get,
   MissingParameterError,
   Next,
-  Req,
   ReqBody,
   ReqContext,
   ReqCookie,
@@ -21,7 +20,8 @@ import {
   ReqIp,
   ReqParam,
   ReqQuery,
-  Res,
+  Request,
+  Response,
   ValidationError,
   UUID,
   createRouter
@@ -53,8 +53,8 @@ describe("request parameter injection", () => {
         @ReqCookie("session") session: string,
         @ReqContext() context: unknown,
         @ReqIp() ip: string | undefined,
-        @Req() req: unknown,
-        @Res() res: unknown,
+        @Request() req: unknown,
+        @Response() res: unknown,
         @Next() next: unknown
       ) {
         return {
@@ -327,8 +327,68 @@ describe("request parameter injection", () => {
     }
 
     expect(() => createRouter({ controllers: [InvalidController] })).toThrow(
-      'Parameter "missing" is not defined in route "/:id".'
+      'Parameter "missing" is not defined in route "/users/:id".'
     );
+  });
+
+  it("accepts keyed request parameters declared in the controller prefix", () => {
+    @Controller("/users/:userId")
+    class PrefixParameterController {
+      @Get("/posts/:postId")
+      read(
+        @ReqParam("userId") userId: string,
+        @ReqParam("postId") postId: string
+      ) {
+        return { userId, postId };
+      }
+    }
+
+    expect(() => createRouter({ controllers: [PrefixParameterController] })).not.toThrow();
+  });
+
+  it("resolves decorated parameters independently of legacy positional arguments", async () => {
+    @Controller("/mixed")
+    class MixedController {
+      @Get("/:id")
+      first(
+        @ReqParam("id") id: string,
+        response: express.Response,
+        next: express.NextFunction,
+        @ReqQuery("page", Number) page: number
+      ) {
+        return {
+          id,
+          hasResponse: typeof response.status === "function",
+          hasNext: typeof next === "function",
+          page
+        };
+      }
+
+      @Get("/replace-response/:id")
+      second(
+        request: express.Request,
+        @ReqParam("id") id: string,
+        next: express.NextFunction
+      ) {
+        return {
+          hasRequest: typeof request.get === "function",
+          id,
+          hasNext: typeof next === "function"
+        };
+      }
+    }
+
+    const app = createTestApp(createRouter({ controllers: [MixedController] }));
+    const firstResponse = await request(app).get("/mixed/42?page=3");
+    const secondResponse = await request(app).get("/mixed/replace-response/42");
+
+    expect(firstResponse.body).toEqual({
+      id: "42",
+      hasResponse: true,
+      hasNext: true,
+      page: 3
+    });
+    expect(secondResponse.body).toEqual({ hasRequest: true, id: "42", hasNext: true });
   });
 
   it("preserves undecorated legacy invocation", async () => {

@@ -11,7 +11,7 @@ A lightweight logger for SculptorTS featuring two logging experiences:
 
 ## 📦 Version
 
-Current package version: `1.0.3`
+Current package version: `1.2.0`
 
 This package follows a backwards-conscious approach, and future updates are expected to remain additive whenever possible.
 

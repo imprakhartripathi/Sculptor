@@ -1,6 +1,10 @@
 import "reflect-metadata";
 
-import type { NextFunction, Request, Response } from "express";
+import type {
+  NextFunction,
+  Request as ExpressRequest,
+  Response as ExpressResponse
+} from "express";
 
 import { METADATA_KEYS } from "./metadata.js";
 import { CodecError, MissingParameterError, ValidationError } from "./errors.js";
@@ -16,9 +20,6 @@ export type ParameterSource =
   | "request"
   | "response"
   | "next";
-
-export type Req = Request;
-export type Res = Response;
 
 export type Codec<T> = (value: unknown) => T;
 export type Validator<T> = (value: T) => void;
@@ -116,8 +117,8 @@ export const ReqCookie = (
 
 export const ReqContext = (): ParameterDecoratorFactory => createParameterDecorator("context");
 export const ReqIp = (): ParameterDecoratorFactory => createParameterDecorator("ip");
-export const Req = (): ParameterDecoratorFactory => createParameterDecorator("request");
-export const Res = (): ParameterDecoratorFactory => createParameterDecorator("response");
+export const Request = (): ParameterDecoratorFactory => createParameterDecorator("request");
+export const Response = (): ParameterDecoratorFactory => createParameterDecorator("response");
 export const Next = (): ParameterDecoratorFactory => createParameterDecorator("next");
 
 export const UUID: Codec<string> = (value: unknown): string => {
@@ -132,7 +133,7 @@ export const UUID: Codec<string> = (value: unknown): string => {
 };
 
 const extractSource = (
-  context: { req: Request; res: Response; next: NextFunction },
+  context: { req: ExpressRequest; res: ExpressResponse; next: NextFunction },
   source: ParameterSource
 ): unknown => {
   switch (source) {
@@ -145,9 +146,9 @@ const extractSource = (
     case "headers":
       return context.req.headers;
     case "cookies":
-      return (context.req as Request & { cookies?: unknown }).cookies;
+      return (context.req as ExpressRequest & { cookies?: unknown }).cookies;
     case "context":
-      return (context.req as Request & { ctx?: unknown }).ctx;
+      return (context.req as ExpressRequest & { ctx?: unknown }).ctx;
     case "ip":
       return context.req.ip;
     case "request":
@@ -160,7 +161,7 @@ const extractSource = (
 };
 
 const extractValue = (
-  context: { req: Request; res: Response; next: NextFunction },
+  context: { req: ExpressRequest; res: ExpressResponse; next: NextFunction },
   definition: ParameterDefinition
 ): unknown => {
   const source = extractSource(context, definition.source);
@@ -229,18 +230,16 @@ export const getParameterDefinitions = (
   Reflect.getMetadata(METADATA_KEYS.methodParameters, prototype, propertyKey) ?? [];
 
 export const resolveControllerArguments = (
-  context: { req: Request; res: Response; next: NextFunction },
+  context: { req: ExpressRequest; res: ExpressResponse; next: NextFunction },
   definitions: ParameterDefinition[]
 ): unknown[] => {
-  const args: unknown[] = [];
+  const args: unknown[] = [context.req, context.res, context.next];
 
   for (const definition of definitions) {
-    let value = extractValue(context, definition);
-
-    if (definition.key !== undefined && definition.source === "headers") {
-      const headerValue = context.req.get(definition.key);
-      value = headerValue;
-    }
+    let value =
+      definition.key !== undefined && definition.source === "headers"
+        ? context.req.get(definition.key)
+        : extractValue(context, definition);
 
     if (isAbsent(value)) {
       if (definition.optional) {
@@ -260,18 +259,6 @@ export const resolveControllerArguments = (
 
     applyValidators(value, definition);
     args[definition.index] = value;
-  }
-
-  if (definitions.length > 0) {
-    const decoratedIndexes = new Set(definitions.map((definition) => definition.index));
-
-    for (let index = 0; index < 3; index += 1) {
-      if (decoratedIndexes.has(index)) {
-        continue;
-      }
-
-      args[index] = [context.req, context.res, context.next][index];
-    }
   }
 
   return args;
